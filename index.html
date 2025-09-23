@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <title>Utfylling</title>
+  <style>
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    input { width: 95%; padding: 4px; }
+    .readonly { background: #f9f9f9; }
+  </style>
+</head>
+<body>
+  <h2>Utfylling</h2>
+  <form id="utfyllingForm">
+    <table id="utfyllingTable">
+      <tr>
+        <th>Dato</th><th>Leiestart</th><th>Leieslutt</th><th>Hva skjer</th>
+      </tr>
+    </table>
+    <br>
+    <button type="submit">Send inn</button>
+  </form>
+
+  <script>
+    const apiUrl = "https://script.google.com/macros/s/AKfycbxWiRlCIn3O_UdEyvtjgcVRHcU3ukgjo1jE7Yiv2d8yFTmrTKrEZa65cbbhKXytO4NA6Q/exec"; // den fra steg 2
+
+    async function loadData() {
+      const res = await fetch(apiUrl);
+      const data = await res.json();
+
+      const table = document.getElementById("utfyllingTable");
+      data.forEach((row, i) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><input class="readonly" type="text" value="${row.dato}" readonly></td>
+          <td><input type="text" name="leiestart_${i}" value="${row.leiestart || ""}"></td>
+          <td><input type="text" name="leieslutt_${i}" value="${row.leieslutt || ""}"></td>
+          <td><input type="text" name="hva_${i}" value="${row.hva || ""}"></td>
+        `;
+        table.appendChild(tr);
+      });
+    }
+
+    document.getElementById("utfyllingForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const rows = [];
+      const table = document.getElementById("utfyllingTable").rows;
+
+      for (let i = 1; i < table.length; i++) {
+        rows.push({
+          row: i + 1, // hopper over header-rad
+          leiestart: table[i].cells[1].children[0].value,
+          leieslutt: table[i].cells[2].children[0].value,
+          hva: table[i].cells[3].children[0].value
+        });
+      }
+
+      await fetch(apiUrl, {
+        method: "POST",
+        body: JSON.stringify(rows),
+        headers: { "Content-Type": "application/json" }
+      });
+
+      alert("✅ Data lagret!");
+    });
+
+    loadData();
+  </script>
+</body>
+</html>
