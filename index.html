@@ -1,71 +1,245 @@
+<script>
+  const apiUrl = "https://script.google.com/macros/s/AKfycbwSZih69reDCs9PiXe1rJZVhrol42fo-DBzvGz03MkpPu2lXbz8XK3o6le-C6aUJwL3rg/exec";
+
+  // Hent arknavn fra URL-param
+  const urlParams = new URLSearchParams(window.location.search);
+  const arkNavn = urlParams.get("ark");
+
+  async function loadData() {
+    const res = await fetch(`${apiUrl}?ark=${encodeURIComponent(arkNavn)}`);
+    const data = await res.json();
+    renderTable(data);
+  }
+
+  async function saveData(newRows) {
+    await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ark: arkNavn, rows: newRows }),
+    });
+  }
+
+  loadData();
+</script>
+
+
+
 <!DOCTYPE html>
 <html lang="no">
 <head>
   <meta charset="UTF-8">
-  <title>Utfylling</title>
+  <title>Utfyllingsskjema</title>
   <style>
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ccc; padding: 8px; }
-    input { width: 95%; padding: 4px; }
-    .readonly { background: #f9f9f9; }
+    @import url('https://fonts.googleapis.com/css2?family=Century+Gothic:wght@300;500&display=swap');
+    body {
+      font-family: "Century Gothic", sans-serif;
+      margin: 40px;
+      background: #fafafa;
+      color: #222;
+    }
+    h2 {
+      font-weight: 500;
+      margin-bottom: 15px;
+    }
+    #lastSaved {
+      font-size: 13px;
+      color: #555;
+      margin-left: 10px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 15px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background: #f2f2f2;
+      font-weight: 500;
+    }
+    tr.weekend { background-color: #f9f1f4; }
+    input, select {
+      width: 100%;
+      padding: 6px;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: 14px;
+    }
+    select { border-radius: 4px; padding: 6px; }
+    .activity-rigg { background-color: #d8c7ff; }
+    .activity-prøver { background-color: #fff8c4; }
+    .activity-forestilling { background-color: #c9f5cb; }
+    .activity-forestillingx2 { background-color: #b4e6b8; }
+    .activity-forestillingx3 { background-color: #9fdba5; }
+    .activity-spillefri { background-color: #f8c5c5; }
+    .activity-annet { background-color: #e3e3e3; }
+    #saveBtn {
+      margin-top: 20px;
+      padding: 12px 24px;
+      background: #67123b;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 15px;
+      transition: all 0.3s;
+    }
+    #saveBtn:hover { background: #4c0d2b; }
+    #saveBtn.saved { background: #4CAF50; }
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: #4CAF50;
+      color: white;
+      padding: 15px 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.4s;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
   </style>
 </head>
+
 <body>
-  <h2>Utfylling</h2>
-  <form id="utfyllingForm">
-    <table id="utfyllingTable">
-      <tr>
-        <th>Dato</th><th>Leiestart</th><th>Leieslutt</th><th>Hva skjer</th>
-      </tr>
+  <h2>Utfyllingsskjema – <span id="prodTitle">Laster...</span><span id="lastSaved"></span></h2>
+  <form id="skjemaForm">
+    <table id="data">
+      <thead>
+        <tr><th>Dato</th><th>Inn-tid</th><th>Ut-tid</th><th>Aktivitet</th></tr>
+      </thead>
+      <tbody></tbody>
     </table>
-    <br>
-    <button type="submit">Send inn</button>
+    <button type="button" id="saveBtn">Lagre endringer</button>
   </form>
+  <div id="toast" class="toast">Takk! Dine endringer er lagret.</div>
 
   <script>
-    const apiUrl = "https://script.google.com/macros/s/AKfycbxqtV6wSb44yzYuv8D9T0HfWQOgCsXAqef8WxaQpx4aUSy4VbEcKtqKs_FzIxUH9ev_4g/exec"; // den fra steg 2
+    // --- HENTER ARKNAVN FRA URL ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const arkNavn = urlParams.get("ark");
+    const prodTitle = document.getElementById("prodTitle");
+    prodTitle.textContent = arkNavn ? arkNavn.replace("Skjema - ", "") : "Ukjent produksjon";
 
-    async function loadData() {
-      const res = await fetch(apiUrl);
-      const data = await res.json();
+    // --- HENTER DATA FRA GOOGLE APPS SCRIPT ---
+    const apiUrl = "https://script.google.com/macros/s/AKfycbyd0h4pOa-kIaBaWek60E703wz_zjQ5wMQ9ZsDXLx8SwTU0rpuBND1h9D_5KK5sj63GJg/exec?ark=" + encodeURIComponent(arkNavn);
 
-      const table = document.getElementById("utfyllingTable");
-      data.forEach((row, i) => {
+    fetch(apiUrl)
+      .then(r => r.json())
+      .then(data => renderTable(data))
+      .catch(err => {
+        console.error("Feil ved henting:", err);
+        document.querySelector("tbody").innerHTML = "<tr><td colspan='4'>Kunne ikke laste data</td></tr>";
+      });
+
+    // --- RENDRER TABELL ---
+    function renderTable(res) {
+      const rows = res.rows || [];
+      const tbody = document.querySelector("#data tbody");
+      tbody.innerHTML = "";
+
+      rows.forEach(r => {
         const tr = document.createElement("tr");
+        if (r.date.toLowerCase().includes("lørdag") || r.date.toLowerCase().includes("søndag")) tr.classList.add("weekend");
+
+        const aktivitetOptions = ["Rigg", "Prøver", "Forestilling", "Forestilling x2", "Forestilling x3", "Spillefri", "Annet"];
+        let aktivitetCell = `<select class="activity-select">`;
+        aktivitetOptions.forEach(opt => {
+          const selected = opt === r.activity ? "selected" : "";
+          aktivitetCell += `<option value="${opt}" ${selected}>${opt}</option>`;
+        });
+        aktivitetCell += "</select>";
+
         tr.innerHTML = `
-          <td><input class="readonly" type="text" value="${row.dato}" readonly></td>
-          <td><input type="text" name="leiestart_${i}" value="${row.leiestart || ""}"></td>
-          <td><input type="text" name="leieslutt_${i}" value="${row.leieslutt || ""}"></td>
-          <td><input type="text" name="hva_${i}" value="${row.hva || ""}"></td>
-        `;
-        table.appendChild(tr);
+          <td>${r.date}</td>
+          <td><input type="text" value="${r.in || ""}"></td>
+          <td><input type="text" value="${r.out || ""}"></td>
+          <td>${aktivitetCell}</td>`;
+        tbody.appendChild(tr);
+      });
+
+      colorizeDropdowns();
+    }
+
+    // --- FARGELEGG DROPDOWNS ---
+    function colorizeDropdowns() {
+      document.querySelectorAll(".activity-select").forEach(sel => {
+        const val = sel.value.toLowerCase().replace(/\s+/g, "");
+        sel.className = "activity-select activity-" + val;
+        sel.addEventListener("change", () => {
+          const newVal = sel.value.toLowerCase().replace(/\s+/g, "");
+          sel.className = "activity-select activity-" + newVal;
+        });
       });
     }
 
-    document.getElementById("utfyllingForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
+    // --- LAGRING VIA APPS SCRIPT API (POST) ---
+    document.getElementById("saveBtn").addEventListener("click", async () => {
       const rows = [];
-      const table = document.getElementById("utfyllingTable").rows;
-
-      for (let i = 1; i < table.length; i++) {
+      document.querySelectorAll("#data tbody tr").forEach(tr => {
+        const inputs = tr.querySelectorAll("input, select");
         rows.push({
-          row: i + 1, // hopper over header-rad
-          leiestart: table[i].cells[1].children[0].value,
-          leieslutt: table[i].cells[2].children[0].value,
-          hva: table[i].cells[3].children[0].value
+          date: tr.children[0].textContent,
+          in: inputs[0].value,
+          out: inputs[1].value,
+          activity: inputs[2].value
         });
-      }
+      });
 
       await fetch(apiUrl, {
         method: "POST",
-        body: JSON.stringify(rows),
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ark: arkNavn, rows })
       });
 
-      alert("✅ Data lagret!");
+      showSaved();
     });
 
-    loadData();
+    // --- LAGRET-ANIMASJON ---
+    function showSaved() {
+      const btn = document.getElementById("saveBtn");
+      const toast = document.getElementById("toast");
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
+      const dateStr = now.toLocaleDateString("no-NO", { day: "2-digit", month: "2-digit" });
+      document.getElementById("lastSaved").textContent = `– Sist lagret ${dateStr} ${timeStr}`;
+      btn.textContent = "Lagret!";
+      btn.classList.add("saved");
+      toast.classList.add("show");
+      setTimeout(() => {
+        toast.classList.remove("show");
+        btn.textContent = "Lagre endringer";
+        btn.classList.remove("saved");
+      }, 4000);
+    }
+
+    // --- LIME INN FLERE RADER ---
+    document.querySelector("#data").addEventListener("paste", function(e) {
+      const active = document.activeElement;
+      if (active.tagName !== "INPUT") return;
+      const paste = (e.clipboardData || window.clipboardData).getData("text");
+      const lines = paste.trim().split(/\r?\n/).map(l => l.split(/\t/));
+      if (lines.length === 1 && lines[0].length === 1) return;
+      e.preventDefault();
+      const tr = active.closest("tr");
+      const rowIndex = [...tr.parentNode.children].indexOf(tr);
+      const allInputs = Array.from(tr.querySelectorAll("input, select"));
+      const colIndex = allInputs.indexOf(active);
+      lines.forEach((rowVals, i) => {
+        const row = document.querySelectorAll("#data tbody tr")[rowIndex + i];
+        if (!row) return;
+        const inputs = row.querySelectorAll("input, select");
+        rowVals.forEach((val, j) => {
+          if (inputs[colIndex + j]) inputs[colIndex + j].value = val.trim();
+        });
+      });
+    });
   </script>
 </body>
 </html>
