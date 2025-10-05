@@ -1,29 +1,3 @@
-<script>
-  const apiUrl = "https://script.google.com/macros/s/AKfycbwSZih69reDCs9PiXe1rJZVhrol42fo-DBzvGz03MkpPu2lXbz8XK3o6le-C6aUJwL3rg/exec";
-
-  // Hent arknavn fra URL-param
-  const urlParams = new URLSearchParams(window.location.search);
-  const arkNavn = urlParams.get("ark");
-
-  async function loadData() {
-    const res = await fetch(`${apiUrl}?ark=${encodeURIComponent(arkNavn)}`);
-    const data = await res.json();
-    renderTable(data);
-  }
-
-  async function saveData(newRows) {
-    await fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ark: arkNavn, rows: newRows }),
-    });
-  }
-
-  loadData();
-</script>
-
-
-
 <!DOCTYPE html>
 <html lang="no">
 <head>
@@ -109,6 +83,7 @@
 
 <body>
   <h2>Utfyllingsskjema – <span id="prodTitle">Laster...</span><span id="lastSaved"></span></h2>
+
   <form id="skjemaForm">
     <table id="data">
       <thead>
@@ -118,27 +93,30 @@
     </table>
     <button type="button" id="saveBtn">Lagre endringer</button>
   </form>
+
   <div id="toast" class="toast">Takk! Dine endringer er lagret.</div>
 
   <script>
-    // --- HENTER ARKNAVN FRA URL ---
+    // --- Hent arknavn fra URL ---
     const urlParams = new URLSearchParams(window.location.search);
     const arkNavn = urlParams.get("ark");
-    const prodTitle = document.getElementById("prodTitle");
-    prodTitle.textContent = arkNavn ? arkNavn.replace("Skjema - ", "") : "Ukjent produksjon";
+    const baseUrl = "https://script.google.com/macros/s/AKfycbzilehmSzKp4Adjkdj9iXSneyr_m14FRGRutP9RjCrnP8OlzMWRvn4IQileHsmj0b-5jQ/exec";
+    const apiUrl = `${baseUrl}?ark=${encodeURIComponent(arkNavn)}`;
 
-    // --- HENTER DATA FRA GOOGLE APPS SCRIPT ---
-    const apiUrl = "https://script.google.com/macros/s/AKfycbyd0h4pOa-kIaBaWek60E703wz_zjQ5wMQ9ZsDXLx8SwTU0rpuBND1h9D_5KK5sj63GJg/exec?ark=" + encodeURIComponent(arkNavn);
+    document.getElementById("prodTitle").textContent =
+      arkNavn ? arkNavn.replace("Skjema - ", "") : "Ukjent produksjon";
 
+    // --- Hent data fra Google Apps Script ---
     fetch(apiUrl)
       .then(r => r.json())
       .then(data => renderTable(data))
       .catch(err => {
         console.error("Feil ved henting:", err);
-        document.querySelector("tbody").innerHTML = "<tr><td colspan='4'>Kunne ikke laste data</td></tr>";
+        document.querySelector("tbody").innerHTML =
+          "<tr><td colspan='4'>Kunne ikke laste data</td></tr>";
       });
 
-    // --- RENDRER TABELL ---
+    // --- Render tabell ---
     function renderTable(res) {
       const rows = res.rows || [];
       const tbody = document.querySelector("#data tbody");
@@ -146,9 +124,14 @@
 
       rows.forEach(r => {
         const tr = document.createElement("tr");
-        if (r.date.toLowerCase().includes("lørdag") || r.date.toLowerCase().includes("søndag")) tr.classList.add("weekend");
+        if (r.date.toLowerCase().includes("lørdag") || r.date.toLowerCase().includes("søndag"))
+          tr.classList.add("weekend");
 
-        const aktivitetOptions = ["Rigg", "Prøver", "Forestilling", "Forestilling x2", "Forestilling x3", "Spillefri", "Annet"];
+        const aktivitetOptions = [
+          "Rigg", "Prøver", "Forestilling", "Forestilling x2",
+          "Forestilling x3", "Spillefri", "Annet"
+        ];
+
         let aktivitetCell = `<select class="activity-select">`;
         aktivitetOptions.forEach(opt => {
           const selected = opt === r.activity ? "selected" : "";
@@ -167,7 +150,7 @@
       colorizeDropdowns();
     }
 
-    // --- FARGELEGG DROPDOWNS ---
+    // --- Fargelegg dropdowns ---
     function colorizeDropdowns() {
       document.querySelectorAll(".activity-select").forEach(sel => {
         const val = sel.value.toLowerCase().replace(/\s+/g, "");
@@ -179,7 +162,7 @@
       });
     }
 
-    // --- LAGRING VIA APPS SCRIPT API (POST) ---
+    // --- Lagre endringer ---
     document.getElementById("saveBtn").addEventListener("click", async () => {
       const rows = [];
       document.querySelectorAll("#data tbody tr").forEach(tr => {
@@ -192,7 +175,7 @@
         });
       });
 
-      await fetch(apiUrl, {
+      await fetch(baseUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ark: arkNavn, rows })
@@ -201,7 +184,7 @@
       showSaved();
     });
 
-    // --- LAGRET-ANIMASJON ---
+    // --- Lagret-animasjon ---
     function showSaved() {
       const btn = document.getElementById("saveBtn");
       const toast = document.getElementById("toast");
@@ -219,7 +202,7 @@
       }, 4000);
     }
 
-    // --- LIME INN FLERE RADER ---
+    // --- Muliggjør lim-inn av flere rader ---
     document.querySelector("#data").addEventListener("paste", function(e) {
       const active = document.activeElement;
       if (active.tagName !== "INPUT") return;
