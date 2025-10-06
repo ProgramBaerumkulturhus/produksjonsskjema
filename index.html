@@ -4,183 +4,103 @@
   <meta charset="UTF-8">
   <title>Utfyllingsskjema</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Century+Gothic:wght@300;500&display=swap');
     body {
       font-family: "Century Gothic", sans-serif;
       margin: 40px;
       background: #fafafa;
       color: #222;
     }
-    h2 {
-      font-weight: 500;
-      margin-bottom: 15px;
-    }
-    #lastSaved {
-      font-size: 13px;
-      color: #555;
-      margin-left: 10px;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin-top: 15px;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 10px;
-      text-align: left;
-    }
-    th {
-      background: #f2f2f2;
-      font-weight: 500;
-    }
+    h2 { font-weight: 500; margin-bottom: 15px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 15px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    th { background: #f2f2f2; }
     tr.weekend { background-color: #f9f1f4; }
     input, select {
-      width: 100%;
-      padding: 6px;
-      border: none;
-      background: transparent;
-      font-family: inherit;
-      font-size: 14px;
+      width: 100%; padding: 6px; border: none; background: transparent;
+      font-family: inherit; font-size: 14px;
     }
-    select { border-radius: 4px; padding: 6px; }
-    .activity-rigg { background-color: #d8c7ff; }
-    .activity-prøver { background-color: #fff8c4; }
-    .activity-forestilling { background-color: #c9f5cb; }
-    .activity-forestillingx2 { background-color: #b4e6b8; }
-    .activity-forestillingx3 { background-color: #9fdba5; }
-    .activity-spillefri { background-color: #f8c5c5; }
-    .activity-annet { background-color: #e3e3e3; }
     #saveBtn {
-      margin-top: 20px;
-      padding: 12px 24px;
-      background: #67123b;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 15px;
-      transition: all 0.3s;
+      margin-top: 20px; padding: 12px 24px; background: #67123b;
+      color: white; border: none; border-radius: 6px;
+      cursor: pointer; font-size: 15px;
     }
     #saveBtn:hover { background: #4c0d2b; }
-    #saveBtn.saved { background: #4CAF50; }
     .toast {
-      position: fixed;
-      bottom: 30px;
-      right: 30px;
-      background: #4CAF50;
-      color: white;
-      padding: 15px 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      opacity: 0;
-      transform: translateY(20px);
-      transition: all 0.4s;
+      position: fixed; bottom: 30px; right: 30px;
+      background: #4CAF50; color: white;
+      padding: 15px 20px; border-radius: 8px;
+      opacity: 0; transition: all 0.4s;
     }
-    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.show { opacity: 1; }
   </style>
 </head>
 
 <body>
-  <h2>Utfyllingsskjema – <span id="prodTitle">Laster...</span><span id="lastSaved"></span></h2>
+  <h2>Utfyllingsskjema – <span id="prodTitle">Laster...</span></h2>
 
-  <form id="skjemaForm">
-    <table id="data">
-      <thead>
-        <tr><th>Dato</th><th>Inn-tid</th><th>Ut-tid</th><th>Aktivitet</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <button type="button" id="saveBtn">Lagre endringer</button>
-  </form>
+  <table id="data">
+    <thead>
+      <tr><th>Dato</th><th>Inn-tid</th><th>Ut-tid</th><th>Aktivitet</th></tr>
+    </thead>
+    <tbody><tr><td colspan="4">Laster data …</td></tr></tbody>
+  </table>
 
+  <button id="saveBtn">Lagre endringer</button>
   <div id="toast" class="toast">Takk! Dine endringer er lagret.</div>
 
   <script>
-  // --- Les ark-navn fra URL-parametere ---
-  const params = new URLSearchParams(window.location.search);
-  const arkNavn = params.get("ark");
-  const webAppURL = "https://script.google.com/macros/s/AKfycbwGPhWeBcdxWTthPMcNpzfGc5VljHJeYIodprTkGmlp0BOCJe-ddZ1Nc0fYsWpeYrMtYA/exec";
+    const urlParams = new URLSearchParams(window.location.search);
+    const arkNavn = urlParams.get("ark");
+    document.getElementById("prodTitle").textContent = arkNavn?.replace("Skjema - ", "") || "Ukjent";
 
-  document.getElementById("prodTitle").textContent = arkNavn?.replace("Skjema - ", "") || "Ukjent";
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbwGPhWeBcdxWTthPMcNpzfGc5VljHJeYIodprTkGmlp0BOCJe-ddZ1Nc0fYsWpeYrMtYA/exec";
 
-  const tbody = document.querySelector("#data tbody");
-  const saveBtn = document.getElementById("saveBtn");
+    async function loadData() {
+      try {
+        const res = await fetch(`${scriptUrl}?ark=${encodeURIComponent(arkNavn)}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          mode: "no-cors" // 👈 viktig – bypass CORS i GitHub Pages
+        });
 
-  // --- Last data fra Google Apps Script ---
-  async function loadData() {
-    try {
-      const res = await fetch(`${webAppURL}?ark=${encodeURIComponent(arkNavn)}`);
-      const text = await res.text();
-
-      // Forsøk å hente JSON fra HTML-wrapper (hvis CORS)
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      const jsonStr = jsonMatch ? jsonMatch[0] : text;
-      const data = JSON.parse(jsonStr);
-
-      renderTable(data.rows);
-    } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="4">Kunne ikke laste data (${err})</td></tr>`;
+        // fordi no-cors gir opaque response, tester vi fallback:
+        const text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          renderTable(data);
+        } catch (err) {
+          document.querySelector("#data tbody").innerHTML =
+            `<tr><td colspan="4">Kunne ikke laste data (ugyldig JSON)</td></tr>`;
+        }
+      } catch (err) {
+        document.querySelector("#data tbody").innerHTML =
+          `<tr><td colspan="4">Kunne ikke laste data (${err})</td></tr>`;
+      }
     }
-  }
 
-  function renderTable(rows) {
-    tbody.innerHTML = "";
-    rows.forEach(r => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${r.date}</td>
-        <td><input type="text" value="${r.in || ""}"></td>
-        <td><input type="text" value="${r.out || ""}"></td>
-        <td>
-          <select>
-            <option ${r.activity === "Rigg" ? "selected" : ""}>Rigg</option>
-            <option ${r.activity === "Prøver" ? "selected" : ""}>Prøver</option>
-            <option ${r.activity === "Forestilling" ? "selected" : ""}>Forestilling</option>
-            <option ${r.activity === "Forestilling x2" ? "selected" : ""}>Forestilling x2</option>
-            <option ${r.activity === "Forestilling x3" ? "selected" : ""}>Forestilling x3</option>
-            <option ${r.activity === "Spillefri" ? "selected" : ""}>Spillefri</option>
-            <option ${r.activity === "Annet" ? "selected" : ""}>Annet</option>
-          </select>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
+    function renderTable(res) {
+      const rows = res.rows || [];
+      const tbody = document.querySelector("#data tbody");
+      tbody.innerHTML = "";
+      if (rows.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='4'>Ingen rader funnet</td></tr>";
+        return;
+      }
 
-  // --- Lagre endringer tilbake til Google Sheet ---
-  saveBtn.addEventListener("click", async () => {
-    const rows = [];
-    document.querySelectorAll("#data tbody tr").forEach((tr, i) => {
-      const inputs = tr.querySelectorAll("input, select");
-      rows.push({
-        row: i + 2,
-        date: tr.cells[0].textContent,
-        in: inputs[0].value,
-        out: inputs[1].value,
-        activity: inputs[2].value
+      rows.forEach(r => {
+        const tr = document.createElement("tr");
+        if (r.date.toLowerCase().includes("lørdag") || r.date.toLowerCase().includes("søndag"))
+          tr.classList.add("weekend");
+        tr.innerHTML = `
+          <td>${r.date}</td>
+          <td><input type="text" value="${r.in || ""}"></td>
+          <td><input type="text" value="${r.out || ""}"></td>
+          <td><input type="text" value="${r.activity || ""}"></td>`;
+        tbody.appendChild(tr);
       });
-    });
-
-    try {
-      await fetch(webAppURL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ark: arkNavn, rows })
-      });
-      saveBtn.textContent = "Lagret!";
-      saveBtn.classList.add("saved");
-      setTimeout(() => {
-        saveBtn.textContent = "Lagre endringer";
-        saveBtn.classList.remove("saved");
-      }, 3000);
-    } catch (err) {
-      alert("Kunne ikke lagre: " + err);
     }
-  });
 
-  loadData();
-</script>
-
+    loadData();
+  </script>
 </body>
 </html>
