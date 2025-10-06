@@ -100,7 +100,7 @@
     // --- Hent arknavn fra URL ---
     const urlParams = new URLSearchParams(window.location.search);
     const arkNavn = urlParams.get("ark");
-    const baseUrl = "https://script.google.com/macros/s/AKfycbwrAsUjVAV9YMHxl9iZnRiw1nBTTwgA7f46wjxWMYR7d47oGwmCcou3DF28DutppNICaA/exec";
+    const baseUrl = "https://script.google.com/macros/s/AKfycbwGPhWeBcdxWTthPMcNpzfGc5VljHJeYIodprTkGmlp0BOCJe-ddZ1Nc0fYsWpeYrMtYA/exec";
     const apiUrl = `${baseUrl}?ark=${encodeURIComponent(arkNavn)}`;
 
     document.getElementById("prodTitle").textContent =
