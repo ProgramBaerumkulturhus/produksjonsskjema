@@ -97,132 +97,90 @@
   <div id="toast" class="toast">Takk! Dine endringer er lagret.</div>
 
   <script>
-    // --- Hent arknavn fra URL ---
-    const urlParams = new URLSearchParams(window.location.search);
-    const arkNavn = urlParams.get("ark");
-    const baseUrl = "https://script.google.com/macros/s/AKfycbwGPhWeBcdxWTthPMcNpzfGc5VljHJeYIodprTkGmlp0BOCJe-ddZ1Nc0fYsWpeYrMtYA/exec";
-    const apiUrl = `${baseUrl}?ark=${encodeURIComponent(arkNavn)}`;
+  // --- Les ark-navn fra URL-parametere ---
+  const params = new URLSearchParams(window.location.search);
+  const arkNavn = params.get("ark");
+  const webAppURL = "https://script.google.com/macros/s/AKfycbwGPhWeBcdxWTthPMcNpzfGc5VljHJeYIodprTkGmlp0BOCJe-ddZ1Nc0fYsWpeYrMtYA/exec";
 
-    document.getElementById("prodTitle").textContent =
-      arkNavn ? arkNavn.replace("Skjema - ", "") : "Ukjent produksjon";
+  document.getElementById("prodTitle").textContent = arkNavn?.replace("Skjema - ", "") || "Ukjent";
 
-    // --- Hent data fra Google Apps Script ---
-    fetch(apiUrl)
-      .then(r => r.json())
-      .then(data => renderTable(data))
-      .catch(err => {
-        console.error("Feil ved henting:", err);
-        document.querySelector("tbody").innerHTML =
-          "<tr><td colspan='4'>Kunne ikke laste data</td></tr>";
-      });
+  const tbody = document.querySelector("#data tbody");
+  const saveBtn = document.getElementById("saveBtn");
 
-    // --- Render tabell ---
-    function renderTable(res) {
-      const rows = res.rows || [];
-      const tbody = document.querySelector("#data tbody");
-      tbody.innerHTML = "";
+  // --- Last data fra Google Apps Script ---
+  async function loadData() {
+    try {
+      const res = await fetch(`${webAppURL}?ark=${encodeURIComponent(arkNavn)}`);
+      const text = await res.text();
 
-      rows.forEach(r => {
-        const tr = document.createElement("tr");
-        if (r.date.toLowerCase().includes("lørdag") || r.date.toLowerCase().includes("søndag"))
-          tr.classList.add("weekend");
+      // Forsøk å hente JSON fra HTML-wrapper (hvis CORS)
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : text;
+      const data = JSON.parse(jsonStr);
 
-        const aktivitetOptions = [
-          "Rigg", "Prøver", "Forestilling", "Forestilling x2",
-          "Forestilling x3", "Spillefri", "Annet"
-        ];
-
-        let aktivitetCell = `<select class="activity-select">`;
-        aktivitetOptions.forEach(opt => {
-          const selected = opt === r.activity ? "selected" : "";
-          aktivitetCell += `<option value="${opt}" ${selected}>${opt}</option>`;
-        });
-        aktivitetCell += "</select>";
-
-        tr.innerHTML = `
-          <td>${r.date}</td>
-          <td><input type="text" value="${r.in || ""}"></td>
-          <td><input type="text" value="${r.out || ""}"></td>
-          <td>${aktivitetCell}</td>`;
-        tbody.appendChild(tr);
-      });
-
-      colorizeDropdowns();
+      renderTable(data.rows);
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="4">Kunne ikke laste data (${err})</td></tr>`;
     }
+  }
 
-    // --- Fargelegg dropdowns ---
-    function colorizeDropdowns() {
-      document.querySelectorAll(".activity-select").forEach(sel => {
-        const val = sel.value.toLowerCase().replace(/\s+/g, "");
-        sel.className = "activity-select activity-" + val;
-        sel.addEventListener("change", () => {
-          const newVal = sel.value.toLowerCase().replace(/\s+/g, "");
-          sel.className = "activity-select activity-" + newVal;
-        });
+  function renderTable(rows) {
+    tbody.innerHTML = "";
+    rows.forEach(r => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${r.date}</td>
+        <td><input type="text" value="${r.in || ""}"></td>
+        <td><input type="text" value="${r.out || ""}"></td>
+        <td>
+          <select>
+            <option ${r.activity === "Rigg" ? "selected" : ""}>Rigg</option>
+            <option ${r.activity === "Prøver" ? "selected" : ""}>Prøver</option>
+            <option ${r.activity === "Forestilling" ? "selected" : ""}>Forestilling</option>
+            <option ${r.activity === "Forestilling x2" ? "selected" : ""}>Forestilling x2</option>
+            <option ${r.activity === "Forestilling x3" ? "selected" : ""}>Forestilling x3</option>
+            <option ${r.activity === "Spillefri" ? "selected" : ""}>Spillefri</option>
+            <option ${r.activity === "Annet" ? "selected" : ""}>Annet</option>
+          </select>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // --- Lagre endringer tilbake til Google Sheet ---
+  saveBtn.addEventListener("click", async () => {
+    const rows = [];
+    document.querySelectorAll("#data tbody tr").forEach((tr, i) => {
+      const inputs = tr.querySelectorAll("input, select");
+      rows.push({
+        row: i + 2,
+        date: tr.cells[0].textContent,
+        in: inputs[0].value,
+        out: inputs[1].value,
+        activity: inputs[2].value
       });
-    }
+    });
 
-    // --- Lagre endringer ---
-    document.getElementById("saveBtn").addEventListener("click", async () => {
-      const rows = [];
-      document.querySelectorAll("#data tbody tr").forEach(tr => {
-        const inputs = tr.querySelectorAll("input, select");
-        rows.push({
-          date: tr.children[0].textContent,
-          in: inputs[0].value,
-          out: inputs[1].value,
-          activity: inputs[2].value
-        });
-      });
-
-      await fetch(baseUrl, {
+    try {
+      await fetch(webAppURL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ark: arkNavn, rows })
       });
-
-      showSaved();
-    });
-
-    // --- Lagret-animasjon ---
-    function showSaved() {
-      const btn = document.getElementById("saveBtn");
-      const toast = document.getElementById("toast");
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
-      const dateStr = now.toLocaleDateString("no-NO", { day: "2-digit", month: "2-digit" });
-      document.getElementById("lastSaved").textContent = `– Sist lagret ${dateStr} ${timeStr}`;
-      btn.textContent = "Lagret!";
-      btn.classList.add("saved");
-      toast.classList.add("show");
+      saveBtn.textContent = "Lagret!";
+      saveBtn.classList.add("saved");
       setTimeout(() => {
-        toast.classList.remove("show");
-        btn.textContent = "Lagre endringer";
-        btn.classList.remove("saved");
-      }, 4000);
+        saveBtn.textContent = "Lagre endringer";
+        saveBtn.classList.remove("saved");
+      }, 3000);
+    } catch (err) {
+      alert("Kunne ikke lagre: " + err);
     }
+  });
 
-    // --- Muliggjør lim-inn av flere rader ---
-    document.querySelector("#data").addEventListener("paste", function(e) {
-      const active = document.activeElement;
-      if (active.tagName !== "INPUT") return;
-      const paste = (e.clipboardData || window.clipboardData).getData("text");
-      const lines = paste.trim().split(/\r?\n/).map(l => l.split(/\t/));
-      if (lines.length === 1 && lines[0].length === 1) return;
-      e.preventDefault();
-      const tr = active.closest("tr");
-      const rowIndex = [...tr.parentNode.children].indexOf(tr);
-      const allInputs = Array.from(tr.querySelectorAll("input, select"));
-      const colIndex = allInputs.indexOf(active);
-      lines.forEach((rowVals, i) => {
-        const row = document.querySelectorAll("#data tbody tr")[rowIndex + i];
-        if (!row) return;
-        const inputs = row.querySelectorAll("input, select");
-        rowVals.forEach((val, j) => {
-          if (inputs[colIndex + j]) inputs[colIndex + j].value = val.trim();
-        });
-      });
-    });
-  </script>
+  loadData();
+</script>
+
 </body>
 </html>
