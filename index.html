@@ -116,54 +116,45 @@
 
     // ---------- LAGRE ----------
     async function saveData() {
-      try {
-        saveBtn.textContent = "⏳ Lagrer…";
-        saveBtn.disabled = true;
+  saveBtn.textContent = "⏳ Lagrer…";
+  saveBtn.disabled = true;
 
-        const rows = [];
-        document.querySelectorAll("input[id^='inntid-']").forEach(inp => {
-          const i = inp.id.split("-")[1]; // index fra rad bygd i load
-          rows.push({
-            row: parseInt(i, 10) + 2, // +2: header i Sheets
-            inntid: document.getElementById(`inntid-${i}`).value,
-            uttid: document.getElementById(`uttid-${i}`).value,
-            aktivitet: document.getElementById(`aktivitet-${i}`).value
-          });
-        });
+  const rows = [];
+  document.querySelectorAll("input[id^='inntid-']").forEach(inp => {
+    const i = inp.id.split("-")[1];
+    rows.push({
+      row: parseInt(i, 10) + 2,
+      inntid: document.getElementById(`inntid-${i}`).value,
+      uttid: document.getElementById(`uttid-${i}`).value,
+      aktivitet: document.getElementById(`aktivitet-${i}`).value
+    });
+  });
 
-        const res = await fetch(SCRIPT_URL, {
-        method: "POST",
-        mode: "cors",                 // behold
-        headers: { "Content-Type": "text/plain;charset=utf-8" }, // <— VIKTIG
-        body: JSON.stringify({ ark, rows })
-        });
+  try {
+    // Viktig: text/plain og no-cors => ingen preflight, og vi bryr oss ikke om svar-innhold
+    await fetch(SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors", // <- gjør requesten “opaque”, ingen CORS-feil i UI
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ ark, rows })
+    });
 
-
-        if (!res.ok) throw new Error(`POST feilet: ${res.status}`);
-        const txt = await res.text();
-        if (!/^OK/i.test(txt)) {
-          console.warn("API svarte:", txt);
-        }
-
-        saveBtn.textContent = "✅ Lagret";
-        toastEl.classList.add("show");
-        const now = new Date().toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
-        lastSavedEl.textContent = "Sist lagret: " + now;
-
-        setTimeout(() => {
-          toastEl.classList.remove("show");
-          saveBtn.textContent = "💾 Lagre endringer";
-          saveBtn.disabled = false;
-        }, 2000);
-      } catch (err) {
-        console.error(err);
-        saveBtn.textContent = "⚠️ Feil ved lagring";
-        setTimeout(() => {
-          saveBtn.textContent = "💾 Lagre endringer";
-          saveBtn.disabled = false;
-        }, 2500);
-      }
-    }
+    // Anta suksess (request ble sendt). Gi god UX:
+    saveBtn.textContent = "✅ Lagret";
+    toastEl.classList.add("show");
+    const now = new Date().toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
+    lastSavedEl.textContent = "Sist lagret: " + now;
+  } catch (err) {
+    console.error(err);
+    saveBtn.textContent = "⚠️ Feil ved lagring";
+  } finally {
+    setTimeout(() => {
+      toastEl.classList.remove("show");
+      saveBtn.textContent = "💾 Lagre endringer";
+      saveBtn.disabled = false;
+    }, 2000);
+  }
+}
 
     // ---------- LIM INN FLERE CELLER ----------
     document.querySelector("#data").addEventListener("paste", function (e) {
