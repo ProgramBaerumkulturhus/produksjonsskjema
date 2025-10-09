@@ -132,11 +132,12 @@
         });
 
         const res = await fetch(SCRIPT_URL, {
-          method: "POST",
-          mode: "cors", // viktig for CORS-flyt
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ark, rows })
+        method: "POST",
+        mode: "cors",                 // behold
+        headers: { "Content-Type": "text/plain;charset=utf-8" }, // <— VIKTIG
+        body: JSON.stringify({ ark, rows })
         });
+
 
         if (!res.ok) throw new Error(`POST feilet: ${res.status}`);
         const txt = await res.text();
