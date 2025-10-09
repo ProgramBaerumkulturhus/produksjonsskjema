@@ -1,14 +1,23 @@
 <!DOCTYPE html>
 <html lang="no">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Produksjonsskjema</title>
-  <link rel="stylesheet" href="style.css">
+
+  <!-- Anbefalt: ha style.css ved siden av denne fila -->
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h2 id="title">Laster...</h2>
+  <h2 id="title">Laster…</h2>
+
   <table id="data">
-    <tr><th>Dato</th><th>Inn-tid</th><th>Ut-tid</th><th>Aktivitet</th></tr>
+    <tr>
+      <th>Dato</th>
+      <th>Inn-tid</th>
+      <th>Ut-tid</th>
+      <th>Aktivitet</th>
+    </tr>
   </table>
 
   <button id="saveBtn">💾 Lagre endringer</button>
@@ -16,82 +25,176 @@
   <div id="toast" class="toast">✅ Endringer lagret!</div>
 
   <script>
+    // ---------- KONFIG ----------
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhFCFI7GTThEzfPY37xxU9WTT3fyJTgY-Q-3utJFYYIcz5yeb-lrpYYpQ9qe24Tk1i8Q/exec"; // <-- DIN /exec-URL
     const params = new URLSearchParams(window.location.search);
-    const ark = params.get("ark");
-    const apiBase = "https://script.google.com/macros/s/AKfycbwhFCFI7GTThEzfPY37xxU9WTT3fyJTgY-Q-3utJFYYIcz5yeb-lrpYYpQ9qe24Tk1i8Q/exec"; // <-- din backend-url
+    const ark = params.get("ark") || "";
 
-    const table = document.getElementById("data");
-    const title = document.getElementById("title");
+    const aktivitetValg = [
+      "—",
+      "Rigg",
+      "Prøver",
+      "Forestilling",
+      "Forestilling x2",
+      "Forestilling x3",
+      "Spillefri",
+      "Annet"
+    ];
+
+    // ---------- REFERANSER ----------
+    const titleEl = document.getElementById("title");
+    const tableEl = document.getElementById("data");
     const saveBtn = document.getElementById("saveBtn");
-    const lastSaved = document.getElementById("lastSaved");
-    const toast = document.getElementById("toast");
+    const lastSavedEl = document.getElementById("lastSaved");
+    const toastEl = document.getElementById("toast");
 
-    async function loadData() {
-      title.textContent = "Laster skjema...";
-      const res = await fetch(`${apiBase}?ark=${encodeURIComponent(ark)}`);
-      const json = await res.json();
-
-      title.textContent = ark;
-      json.rows.forEach((r, i) => {
-        const d = new Date(r.dato);
-        const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-        const row = document.createElement("tr");
-        if (isWeekend) row.classList.add("weekend");
-
-        row.innerHTML = `
-          <td><input type="text" value="${new Date(r.dato).toLocaleDateString('no-NO', { weekday: 'short', day: '2-digit', month: '2-digit' })}" readonly></td>
-          <td><input type="text" id="inntid-${i}" value="${r.inntid || ''}"></td>
-          <td><input type="text" id="uttid-${i}" value="${r.uttid || ''}"></td>
-          <td>
-            <select id="aktivitet-${i}">
-              <option value="">—</option>
-              <option>Rigg</option>
-              <option>Prøver</option>
-              <option>Forestilling</option>
-              <option>Forestilling x2</option>
-              <option>Forestilling x3</option>
-              <option>Spillefri</option>
-              <option>Annet</option>
-            </select>
-          </td>`;
-        table.appendChild(row);
-        if (r.aktivitet) document.getElementById(`aktivitet-${i}`).value = r.aktivitet;
+    // ---------- HJELP ----------
+    function fmtDato(d) {
+      // viser "ons. 01.10."
+      return d.toLocaleDateString("no-NO", {
+        weekday: "short",
+        day: "2-digit",
+        month: "2-digit"
       });
     }
 
-    saveBtn.addEventListener("click", async () => {
-      saveBtn.textContent = "⏳ Lagrer...";
-      saveBtn.disabled = true;
+    function isWeekend(d) {
+      const day = d.getDay();
+      return day === 0 || day === 6; // søn/lør
+    }
 
-      const rows = [];
-      document.querySelectorAll("input[id^='inntid-']").forEach(inp => {
-        const i = inp.id.split('-')[1];
-        rows.push({
-          row: parseInt(i) + 2,
-          inntid: document.getElementById(`inntid-${i}`).value,
-          uttid: document.getElementById(`uttid-${i}`).value,
-          aktivitet: document.getElementById(`aktivitet-${i}`).value
+    function optionHtml(current) {
+      return aktivitetValg
+        .map(v => {
+          const sel = (v || "") === (current || "") ? "selected" : "";
+          const cls = "activity-" + v.toLowerCase().replaceAll(" ", "").replace("—", "");
+          return `<option value="${v}" class="${cls}" ${sel}>${v}</option>`;
+        })
+        .join("");
+    }
+
+    // ---------- LAST DATA ----------
+    async function loadData() {
+      if (!ark) {
+        titleEl.textContent = "Mangler ?ark= i URL";
+        return;
+      }
+      titleEl.textContent = ark;
+
+      try {
+        const res = await fetch(`${SCRIPT_URL}?ark=${encodeURIComponent(ark)}`, {
+          method: "GET",
+          mode: "cors",
+        });
+        if (!res.ok) throw new Error(`GET feilet: ${res.status}`);
+        const json = await res.json();
+
+        json.rows.forEach((r, i) => {
+          // r.dato kan være string fra Apps Script – prøv å lage Date
+          const d = new Date(r.dato);
+          const tr = document.createElement("tr");
+          if (isWeekend(d)) tr.classList.add("weekend");
+
+          tr.innerHTML = `
+            <td><input type="text" value="${fmtDato(d)}" readonly></td>
+            <td><input type="text" id="inntid-${i}" value="${r.inntid || ""}"></td>
+            <td><input type="text" id="uttid-${i}" value="${r.uttid || ""}"></td>
+            <td>
+              <select id="aktivitet-${i}">
+                ${optionHtml(r.aktivitet)}
+              </select>
+            </td>
+          `;
+          tableEl.appendChild(tr);
+        });
+
+      } catch (err) {
+        console.error(err);
+        alert("Kunne ikke hente data fra arket. Sjekk API-lenken.");
+      }
+    }
+
+    // ---------- LAGRE ----------
+    async function saveData() {
+      try {
+        saveBtn.textContent = "⏳ Lagrer…";
+        saveBtn.disabled = true;
+
+        const rows = [];
+        document.querySelectorAll("input[id^='inntid-']").forEach(inp => {
+          const i = inp.id.split("-")[1]; // index fra rad bygd i load
+          rows.push({
+            row: parseInt(i, 10) + 2, // +2: header i Sheets
+            inntid: document.getElementById(`inntid-${i}`).value,
+            uttid: document.getElementById(`uttid-${i}`).value,
+            aktivitet: document.getElementById(`aktivitet-${i}`).value
+          });
+        });
+
+        const res = await fetch(SCRIPT_URL, {
+          method: "POST",
+          mode: "cors", // viktig for CORS-flyt
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ark, rows })
+        });
+
+        if (!res.ok) throw new Error(`POST feilet: ${res.status}`);
+        const txt = await res.text();
+        if (!/^OK/i.test(txt)) {
+          console.warn("API svarte:", txt);
+        }
+
+        saveBtn.textContent = "✅ Lagret";
+        toastEl.classList.add("show");
+        const now = new Date().toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
+        lastSavedEl.textContent = "Sist lagret: " + now;
+
+        setTimeout(() => {
+          toastEl.classList.remove("show");
+          saveBtn.textContent = "💾 Lagre endringer";
+          saveBtn.disabled = false;
+        }, 2000);
+      } catch (err) {
+        console.error(err);
+        saveBtn.textContent = "⚠️ Feil ved lagring";
+        setTimeout(() => {
+          saveBtn.textContent = "💾 Lagre endringer";
+          saveBtn.disabled = false;
+        }, 2500);
+      }
+    }
+
+    // ---------- LIM INN FLERE CELLER ----------
+    document.querySelector("#data").addEventListener("paste", function (e) {
+      const active = document.activeElement;
+      if (!active || active.tagName !== "INPUT") return;
+
+      const paste = (e.clipboardData || window.clipboardData).getData("text");
+      const lines = paste.trim().split(/\r?\n/).map(l => l.split(/\t/));
+
+      if (lines.length === 1 && lines[0].length === 1) return; // vanlig lim-inn
+
+      e.preventDefault();
+
+      const tr = active.closest("tr");
+      const rowIndex = [...tr.parentNode.children].indexOf(tr);
+      const allInputs = Array.from(tr.querySelectorAll("input, select"));
+      const colIndex = allInputs.indexOf(active);
+
+      lines.forEach((rowVals, i) => {
+        const row = document.querySelectorAll("#data tr")[rowIndex + i];
+        if (!row) return;
+        const inputs = row.querySelectorAll("input, select");
+        rowVals.forEach((val, j) => {
+          if (inputs[colIndex + j]) inputs[colIndex + j].value = val.trim();
         });
       });
-
-      await fetch(apiBase, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ark, rows })
-      });
-
-      saveBtn.textContent = "✅ Lagret";
-      toast.classList.add("show");
-      const now = new Date().toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
-      lastSaved.textContent = "Sist lagret: " + now;
-      setTimeout(() => {
-        toast.classList.remove("show");
-        saveBtn.textContent = "💾 Lagre endringer";
-        saveBtn.disabled = false;
-      }, 3000);
     });
 
+    // ---------- INIT ----------
+    saveBtn.addEventListener("click", saveData);
     loadData();
   </script>
 </body>
 </html>
+
