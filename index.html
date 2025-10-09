@@ -1,124 +1,97 @@
 <!DOCTYPE html>
 <html lang="no">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Utfylling</title>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: #fafafa;
-      padding: 2rem;
-      max-width: 800px;
-      margin: auto;
-    }
-    h1 {
-      margin-bottom: 1rem;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      background: white;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 6px;
-    }
-    th {
-      background: #f0f0f0;
-    }
-    input {
-      width: 100%;
-      border: none;
-      background: #fff8dc;
-      padding: 4px;
-    }
-    button {
-      margin-top: 10px;
-      padding: 8px 16px;
-      cursor: pointer;
-    }
-    #status {
-      margin-top: 1rem;
-      font-style: italic;
-      color: #333;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <title>Produksjonsskjema</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-  <h1>Utfylling</h1>
+  <h2 id="title">Laster...</h2>
+  <table id="data">
+    <tr><th>Dato</th><th>Inn-tid</th><th>Ut-tid</th><th>Aktivitet</th></tr>
+  </table>
 
-  <table id="sheetData"></table>
-  <button onclick="saveChanges()">Lagre endringer</button>
-  <div id="status"></div>
+  <button id="saveBtn">💾 Lagre endringer</button>
+  <span id="lastSaved"></span>
+  <div id="toast" class="toast">✅ Endringer lagret!</div>
 
   <script>
-    const apiUrl =
-      "https://script.google.com/macros/s/AKfycbx4ga9S-fZMmpBXNVKS_NlBTdtywAbFvso-wZNvL989kI8a1ZdgiyMVYBXbv295eiAPWQ/exec";
+    const params = new URLSearchParams(window.location.search);
+    const ark = params.get("ark");
+    const apiBase = "https://script.google.com/macros/s/AKfycbwhFCFI7GTThEzfPY37xxU9WTT3fyJTgY-Q-3utJFYYIcz5yeb-lrpYYpQ9qe24Tk1i8Q/exec"; // <-- din backend-url
 
-    async function loadSheet() {
-      try {
-        document.getElementById("status").textContent = "⏳ Laster data...";
-        const res = await fetch(apiUrl);
-        const data = await res.json();
-        console.log("Data hentet:", data);
+    const table = document.getElementById("data");
+    const title = document.getElementById("title");
+    const saveBtn = document.getElementById("saveBtn");
+    const lastSaved = document.getElementById("lastSaved");
+    const toast = document.getElementById("toast");
 
-        const table = document.getElementById("sheetData");
-        table.innerHTML = "";
+    async function loadData() {
+      title.textContent = "Laster skjema...";
+      const res = await fetch(`${apiBase}?ark=${encodeURIComponent(ark)}`);
+      const json = await res.json();
 
-        data.forEach((row, rIndex) => {
-          const tr = document.createElement("tr");
-          row.forEach((cell, cIndex) => {
-            const td = document.createElement("td");
-            if (rIndex === 0) {
-              td.outerHTML = `<th>${cell}</th>`;
-            } else {
-              td.innerHTML = `<input value="${cell ?? ""}" data-row="${
-                rIndex + 1
-              }" data-col="${cIndex + 1}">`;
-              tr.appendChild(td);
-            }
-          });
-          table.appendChild(tr);
+      title.textContent = ark;
+      json.rows.forEach((r, i) => {
+        const d = new Date(r.dato);
+        const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+        const row = document.createElement("tr");
+        if (isWeekend) row.classList.add("weekend");
+
+        row.innerHTML = `
+          <td><input type="text" value="${new Date(r.dato).toLocaleDateString('no-NO', { weekday: 'short', day: '2-digit', month: '2-digit' })}" readonly></td>
+          <td><input type="text" id="inntid-${i}" value="${r.inntid || ''}"></td>
+          <td><input type="text" id="uttid-${i}" value="${r.uttid || ''}"></td>
+          <td>
+            <select id="aktivitet-${i}">
+              <option value="">—</option>
+              <option>Rigg</option>
+              <option>Prøver</option>
+              <option>Forestilling</option>
+              <option>Forestilling x2</option>
+              <option>Forestilling x3</option>
+              <option>Spillefri</option>
+              <option>Annet</option>
+            </select>
+          </td>`;
+        table.appendChild(row);
+        if (r.aktivitet) document.getElementById(`aktivitet-${i}`).value = r.aktivitet;
+      });
+    }
+
+    saveBtn.addEventListener("click", async () => {
+      saveBtn.textContent = "⏳ Lagrer...";
+      saveBtn.disabled = true;
+
+      const rows = [];
+      document.querySelectorAll("input[id^='inntid-']").forEach(inp => {
+        const i = inp.id.split('-')[1];
+        rows.push({
+          row: parseInt(i) + 2,
+          inntid: document.getElementById(`inntid-${i}`).value,
+          uttid: document.getElementById(`uttid-${i}`).value,
+          aktivitet: document.getElementById(`aktivitet-${i}`).value
         });
+      });
 
-        document.getElementById("status").textContent = "✅ Ferdig lastet!";
-      } catch (err) {
-        console.error("Feil ved henting:", err);
-        alert("Kunne ikke hente data fra arket. Se console for detaljer.");
-        document.getElementById("status").textContent =
-          "❌ Kunne ikke hente data.";
-      }
-    }
+      await fetch(apiBase, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ark, rows })
+      });
 
-    async function saveChanges() {
-      const inputs = document.querySelectorAll("input");
-      document.getElementById("status").textContent = "💾 Lagrer endringer...";
+      saveBtn.textContent = "✅ Lagret";
+      toast.classList.add("show");
+      const now = new Date().toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
+      lastSaved.textContent = "Sist lagret: " + now;
+      setTimeout(() => {
+        toast.classList.remove("show");
+        saveBtn.textContent = "💾 Lagre endringer";
+        saveBtn.disabled = false;
+      }, 3000);
+    });
 
-      for (const input of inputs) {
-        const body = {
-          row: Number(input.dataset.row),
-          col: Number(input.dataset.col),
-          value: input.value,
-        };
-
-        try {
-          await fetch(apiUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          });
-        } catch (err) {
-          console.error("Feil ved lagring:", err);
-        }
-      }
-
-      document.getElementById("status").textContent =
-        "✅ Endringer lagret i Google Sheet!";
-    }
-
-    loadSheet();
+    loadData();
   </script>
 </body>
 </html>
