@@ -1,0 +1,91 @@
+body {
+  font-family: "Century Gothic", sans-serif;
+  margin: 40px;
+  background: #fafafa;
+  color: #222;
+}
+
+h2 {
+  font-weight: 500;
+  margin-bottom: 15px;
+}
+
+#lastSaved {
+  font-size: 13px;
+  color: #555;
+  margin-left: 10px;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 15px;
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: left;
+}
+
+th {
+  background: #f2f2f2;
+  font-weight: 500;
+}
+
+tr.weekend {
+  background-color: #f9f1f4;
+}
+
+input, select {
+  width: 100%;
+  padding: 6px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+select {
+  border-radius: 4px;
+  padding: 6px;
+}
+
+#saveBtn {
+  margin-top: 20px;
+  padding: 12px 24px;
+  background: #67123b;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  transition: all 0.3s;
+}
+
+#saveBtn:hover {
+  background: #4c0d2b;
+}
+
+#saveBtn.saved {
+  background: #4CAF50;
+}
+
+.toast {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: #4CAF50;
+  color: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.4s;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
