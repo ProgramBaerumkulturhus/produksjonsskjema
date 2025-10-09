@@ -1,100 +1,124 @@
 <!DOCTYPE html>
 <html lang="no">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Utfylling</title>
-<style>
-  body {
-    font-family: system-ui, sans-serif;
-    background: #fafafa;
-    padding: 2rem;
-    max-width: 800px;
-    margin: auto;
-  }
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    background: white;
-  }
-  th, td {
-    border: 1px solid #ddd;
-    padding: 6px;
-  }
-  th {
-    background: #f0f0f0;
-  }
-  input {
-    width: 100%;
-    border: none;
-    background: #fff8dc;
-    padding: 4px;
-  }
-  button {
-    margin-top: 10px;
-    padding: 8px 16px;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Utfylling</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #fafafa;
+      padding: 2rem;
+      max-width: 800px;
+      margin: auto;
+    }
+    h1 {
+      margin-bottom: 1rem;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 6px;
+    }
+    th {
+      background: #f0f0f0;
+    }
+    input {
+      width: 100%;
+      border: none;
+      background: #fff8dc;
+      padding: 4px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 8px 16px;
+      cursor: pointer;
+    }
+    #status {
+      margin-top: 1rem;
+      font-style: italic;
+      color: #333;
+    }
+  </style>
 </head>
+
 <body>
-<h1>Utfylling</h1>
+  <h1>Utfylling</h1>
 
-<table id="sheetData"></table>
-<button onclick="saveChanges()">Lagre endringer</button>
+  <table id="sheetData"></table>
+  <button onclick="saveChanges()">Lagre endringer</button>
+  <div id="status"></div>
 
-<script>
-const apiUrl = "https://script.google.com/macros/s/AKfycbx4ga9S-fZMmpBXNVKS_NlBTdtywAbFvso-wZNvL989kI8a1ZdgiyMVYBXbv295eiAPWQ/exec";
+  <script>
+    const apiUrl =
+      "https://script.google.com/macros/s/AKfycbx4ga9S-fZMmpBXNVKS_NlBTdtywAbFvso-wZNvL989kI8a1ZdgiyMVYBXbv295eiAPWQ/exec";
 
-async function loadSheet() {
-  try {
-    const res = await fetch(apiUrl);
-    const data = await res.json();
+    async function loadSheet() {
+      try {
+        document.getElementById("status").textContent = "⏳ Laster data...";
+        const res = await fetch(apiUrl);
+        const data = await res.json();
+        console.log("Data hentet:", data);
 
-    const table = document.getElementById("sheetData");
-    table.innerHTML = "";
+        const table = document.getElementById("sheetData");
+        table.innerHTML = "";
 
-    // Lag tabell
-    data.forEach((row, rIndex) => {
-      const tr = document.createElement("tr");
-      row.forEach((cell, cIndex) => {
-        const td = document.createElement("td");
+        data.forEach((row, rIndex) => {
+          const tr = document.createElement("tr");
+          row.forEach((cell, cIndex) => {
+            const td = document.createElement("td");
+            if (rIndex === 0) {
+              td.outerHTML = `<th>${cell}</th>`;
+            } else {
+              td.innerHTML = `<input value="${cell ?? ""}" data-row="${
+                rIndex + 1
+              }" data-col="${cIndex + 1}">`;
+              tr.appendChild(td);
+            }
+          });
+          table.appendChild(tr);
+        });
 
-        // Gjør første rad til overskrifter
-        if (rIndex === 0) {
-          td.outerHTML = `<th>${cell}</th>`;
-        } else {
-          td.innerHTML = `<input value="${cell ?? ''}" 
-            data-row="${rIndex+1}" data-col="${cIndex+1}">`;
-          tr.appendChild(td);
+        document.getElementById("status").textContent = "✅ Ferdig lastet!";
+      } catch (err) {
+        console.error("Feil ved henting:", err);
+        alert("Kunne ikke hente data fra arket. Se console for detaljer.");
+        document.getElementById("status").textContent =
+          "❌ Kunne ikke hente data.";
+      }
+    }
+
+    async function saveChanges() {
+      const inputs = document.querySelectorAll("input");
+      document.getElementById("status").textContent = "💾 Lagrer endringer...";
+
+      for (const input of inputs) {
+        const body = {
+          row: Number(input.dataset.row),
+          col: Number(input.dataset.col),
+          value: input.value,
+        };
+
+        try {
+          await fetch(apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+        } catch (err) {
+          console.error("Feil ved lagring:", err);
         }
-      });
-      table.appendChild(tr);
-    });
-  } catch (err) {
-    console.error("Feil ved henting:", err);
-    alert("Kunne ikke hente data fra arket.");
-  }
-}
+      }
 
-async function saveChanges() {
-  const inputs = document.querySelectorAll("input");
-  for (const input of inputs) {
-    const body = {
-      row: Number(input.dataset.row),
-      col: Number(input.dataset.col),
-      value: input.value
-    };
+      document.getElementById("status").textContent =
+        "✅ Endringer lagret i Google Sheet!";
+    }
 
-    await fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-  }
-  alert("Endringer lagret i Google Sheet!");
-}
-
-loadSheet();
-</script>
+    loadSheet();
+  </script>
 </body>
 </html>
