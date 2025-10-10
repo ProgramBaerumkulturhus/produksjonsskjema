@@ -170,19 +170,21 @@
       : "Prøver";
 
   const tr = document.createElement("tr");
-  if (weekend) tr.classList.add("weekend");
+tr.dataset.eventId = r.id || "";   // ID tilgjengelig usynlig
+if (weekend) tr.classList.add("weekend");
 
-  tr.innerHTML = `
-    <td class="date-td"><span class="weekday">${weekday}</span> ${rest}</td>
-    <td><input type="text" id="inntid-${i}" value="${r.inntid || ""}"></td>
-    <td><input type="text" id="uttid-${i}" value="${r.uttid || ""}"></td>
-    <td class="act-cell">
-      <select id="aktivitet-${i}">
-        ${optionHtml(currentAktivitet)}
-      </select>
-    </td>
-    <td><input type="text" id="kommentar-${i}" value="${r.kommentar || ""}"></td>
-  `;
+tr.innerHTML = `
+  <td class="date-td"><span class="weekday">${weekday}</span> ${rest}</td>
+  <td><input type="text" id="inntid-${i}" value="${r.inntid || ""}"></td>
+  <td><input type="text" id="uttid-${i}" value="${r.uttid || ""}"></td>
+  <td class="act-cell">
+    <select id="aktivitet-${i}">
+      ${optionHtml(currentAktivitet)}
+    </select>
+  </td>
+  <td><input type="text" id="kommentar-${i}" value="${r.kommentar || ""}"></td>
+`;
+
 
   const sel = tr.querySelector(`#aktivitet-${i}`);
   applyActivityStyle(sel);
