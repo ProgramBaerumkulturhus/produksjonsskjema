@@ -6,7 +6,7 @@
   <title>Produksjonsskjema</title>
 
   <!-- Anbefalt: ha style.css ved siden av denne fila -->
-  <link rel="stylesheet" href="style.css?v=4" />
+  <link rel="stylesheet" href="style.css?v=5" />
 </head>
 <body>
 
@@ -138,25 +138,34 @@ function applyActivityStyle(selectEl) {
   let weekend = false;
 
   if (isNaN(d.getTime())) {
-    // Klarte ikke tolke – bruk teksten og sjekk helg via prefix
-    visDato = raw;
+    visDato = raw; // f.eks. "Onsdag 01. oktober"
     const lower = raw.toLowerCase();
     weekend = lower.startsWith("lørdag") || lower.startsWith("søndag");
   } else {
-    visDato = formatDatoLang(d);   // bruker funksjonen din som lager full ukedag
+    visDato = formatDatoLang(d);  // "Onsdag 01. oktober"
     weekend = isWeekend(d);
   }
+
+  // Bold ukedag:
+  const firstSpace = visDato.indexOf(" ");
+  const weekday = firstSpace > 0 ? visDato.slice(0, firstSpace) : visDato;
+  const rest    = firstSpace > 0 ? visDato.slice(firstSpace + 1) : "";
+
+  // Standard aktivitet = "Prøver" hvis feltet er tomt/streken
+  const currentAktivitet = (r.aktivitet && r.aktivitet.trim() && r.aktivitet.trim() !== "—")
+    ? r.aktivitet
+    : "Prøver";
 
   const tr = document.createElement("tr");
   if (weekend) tr.classList.add("weekend");
 
   tr.innerHTML = `
-    <td><input type="text" value="${visDato}" readonly></td>
+    <td class="date-td"><span class="weekday">${weekday}</span>${rest ? " " + rest : ""}</td>
     <td><input type="text" id="inntid-${i}" value="${r.inntid || ""}"></td>
     <td><input type="text" id="uttid-${i}" value="${r.uttid || ""}"></td>
     <td class="act-cell">
       <select id="aktivitet-${i}">
-        ${optionHtml(r.aktivitet)}
+        ${optionHtml(currentAktivitet)}
       </select>
     </td>
   `;
@@ -166,7 +175,6 @@ function applyActivityStyle(selectEl) {
   applyActivityStyle(sel);
   sel.addEventListener("change", () => applyActivityStyle(sel));
 });
-
 
 
       } catch (err) {
