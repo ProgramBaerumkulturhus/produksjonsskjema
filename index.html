@@ -10,34 +10,45 @@
 </head>
 <body>
 
-  <header class="intro">
-  <h1>Produksjonsskjema</h1>
+ <!-- SIDE-HEADER (mørk bakgrunn + hvit logo) -->
+  <header class="site-header">
+    <img src="logo-white.png" alt="Bærum Kulturhus" class="brand-logo" />
+  </header>
 
-  <p>I skjema under skal dere fylle ut <strong>inn- og ut-tid</strong> og <strong>innhold</strong> for dagene i leieforholdet.</p>
-  <p>Vi ønsker at dere fyller inn tider selv om dette ikke er helt fastsatt enda – vi bruker denne informasjonen som et utgangspunkt for å lage tilbud til dere. Detaljene er <em>ikke bindende</em> og kan endres senere.</p>
+  <!-- HVITT KORT SOM INNEHOLDER HELE SKJEMA-SIDEN -->
+  <main class="sheet-card">
+    <section class="intro">
+      <h1>Produksjonsskjema</h1>
+      <p>
+        I skjema under skal dere fylle ut <strong>inn- og ut-tid</strong> og <strong>innhold</strong> for dagene i leieforholdet.
+      </p>
+      <p>
+        Vi ønsker at dere fyller inn tider selv om dette ikke er helt fastsatt enda – vi bruker denne informasjonen som
+        et utgangspunkt for å lage tilbud til dere. Detaljene er <em>ikke bindende</em> og kan endres senere.
+      </p>
+      <ul class="bullets">
+        <li><strong>Inn-tid</strong> = Første person inn</li>
+        <li><strong>Ut-tid</strong> = Siste person ut</li>
+      </ul>
 
-  <ul class="bullets">
-    <li><strong>Inn-tid</strong> = Første person inn</li>
-    <li><strong>Ut-tid</strong> = Siste person ut</li>
-  </ul>
+      <span class="hint">HUSK Å LAGRE ENDRINGENE NÅR DE ER LAGT INN!</span>
+    </section>
 
-  <div class="hint">HUSK Å LAGRE ENDRINGENE NÅR DE ER LAGT INN!</div>
-</header>
+    <h2 id="title">Laster…</h2>
 
-  <h2 id="title">Laster…</h2>
+    <table id="data">
+      <tr>
+        <th>Dato</th>
+        <th>Inn-tid</th>
+        <th>Ut-tid</th>
+        <th>Aktivitet</th>
+      </tr>
+    </table>
 
-  <table id="data">
-    <tr>
-      <th>Dato</th>
-      <th>Inn-tid</th>
-      <th>Ut-tid</th>
-      <th>Aktivitet</th>
-    </tr>
-  </table>
-
-  <button id="saveBtn">💾 Lagre endringer</button>
-  <span id="lastSaved"></span>
-  <div id="toast" class="toast">✅ Endringer lagret!</div>
+    <button id="saveBtn">💾 Lagre endringer</button>
+    <span id="lastSaved"></span>
+    <div id="toast" class="toast">✅ Endringer lagret!</div>
+  </main>
 
   <script>
     // ---------- KONFIG ----------
