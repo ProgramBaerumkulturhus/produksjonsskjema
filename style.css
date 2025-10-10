@@ -10,12 +10,28 @@
   th { background: #f5f5f5; font-weight: 600; }
   tr.weekend { background: #fdeff3; } /* mild rosa for lør/søn */
 
-  /* Inputs */
-  input[type=text], select {
-    width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;
-    font: inherit; background: #fff; box-sizing: border-box;
-  }
-  input[readonly] { background: #f7f7f7; }
+  /* Inputs – flate, uten indre kant */
+input[type=text],
+select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;                  /* ← fjerner “boks i boks” */
+  background: transparent;    /* flatt */
+  border-radius: 8px;
+  font: inherit;
+  box-sizing: border-box;
+  outline: none;              /* vi styrer fokus selv */
+}
+
+/* Fokusstil – subtil “ring” som matcher primærfargen */
+input[type=text]:focus,
+select:focus {
+  box-shadow: 0 0 0 2px #67123b33; /* diskret ring */
+}
+
+/* Lesefelt */
+input[readonly] { background: #f7f7f7; }
+
 
   /* Lagre-knapp */
   #saveBtn {
@@ -34,14 +50,43 @@
   }
   .toast.show { opacity: 1; transform: translateY(0); }
 
-  /* 🔵 Aktivitet-farger – vi farger selve <td> og/eller <select> ved valgt verdi  */
-  td.act-cell.rigg,      select.rigg      { background:#d8c7ff; }
-  td.act-cell.prøver,    select.prøver    { background:#fff8c4; }
-  td.act-cell.forestilling,   select.forestilling   { background:#c9f5cb; }
-  td.act-cell.forestillingx2, select.forestillingx2 { background:#b4e6b8; }
-  td.act-cell.forestillingx3, select.forestillingx3 { background:#9fdba5; }
-  td.act-cell.spillefri, select.spillefri { background:#f8c5c5; }
-  td.act-cell.annet,     select.annet     { background:#e3e3e3; }
+  /* Penere select-kontroll */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;                  /* fjern systempil */
+  background-color: transparent;     /* lar rad-fargen skinne gjennom */
+  padding-right: 34px;               /* plass til pil */
+  position: relative;
+}
+
+/* Egendefinert pil (SVG) */
+select {
+  background-image: url("data:image/svg+xml;utf8,\
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='20' height='20'>\
+      <path fill='%2367123b' d='M7 10l5 5 5-5z'/>\
+    </svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 18px 18px;
+}
+
+/* Når celle/valg farger settes, la select følge */
+select.rigg, select.prøver, select.forestilling,
+select.forestillingx2, select.forestillingx3,
+select.spillefri, select.annet {
+  background-color: transparent;   /* fargen kommer fra klassen + td */
+}
+
+/* Rad/celle-farger (som før) */
+td.act-cell.rigg,      select.rigg      { background:#d8c7ff; }
+td.act-cell.prøver,    select.prøver    { background:#fff8c4; }
+td.act-cell.forestilling,   select.forestilling   { background:#c9f5cb; }
+td.act-cell.forestillingx2, select.forestillingx2 { background:#b4e6b8; }
+td.act-cell.forestillingx3, select.forestillingx3 { background:#9fdba5; }
+td.act-cell.spillefri, select.spillefri { background:#f8c5c5; }
+td.act-cell.annet,     select.annet     { background:#e3e3e3; }
+
 
   /* fin liten overgang når farger endrer seg */
   td.act-cell, select { transition: background .15s ease; }
