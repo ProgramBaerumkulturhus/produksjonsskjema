@@ -1,4 +1,4 @@
-<style>
+
   /* Generelt */
   body { font-family: "Century Gothic", system-ui, sans-serif; margin: 40px; background:#fafafa; color:#222; }
   h2 { font-weight: 600; margin-bottom: 16px; }
@@ -45,4 +45,4 @@
 
   /* fin liten overgang når farger endrer seg */
   td.act-cell, select { transition: background .15s ease; }
-</style>
+
