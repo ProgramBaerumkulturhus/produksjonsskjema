@@ -49,14 +49,18 @@
     const toastEl = document.getElementById("toast");
 
     // ---------- HJELP ----------
-    function fmtDato(d) {
-      // viser "ons. 01.10."
-      return d.toLocaleDateString("no-NO", {
-        weekday: "short",
-        day: "2-digit",
-        month: "2-digit"
-      });
-    }
+    function capitalizeFirst(str) {
+  return str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
+}
+function formatDatoLang(d) {
+  const s = d.toLocaleDateString("no-NO", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long"
+  });
+  return capitalizeFirst(s);
+}
+
 
     function isWeekend(d) {
       const day = d.getDay();
@@ -73,6 +77,29 @@
         .join("");
     }
 
+    const activityClassMap = {
+  "Rigg": "rigg",
+  "Prøver": "prøver",
+  "Forestilling": "forestilling",
+  "Forestilling x2": "forestillingx2",
+  "Forestilling x3": "forestillingx3",
+  "Spillefri": "spillefri",
+  "Annet": "annet",
+  "—": ""
+};
+
+function applyActivityStyle(selectEl) {
+  const td = selectEl.closest("td");
+  td.className = "act-cell";     // reset
+  selectEl.className = "";       // reset
+  const cls = activityClassMap[selectEl.value] || "";
+  if (cls) {
+    td.classList.add(cls);
+    selectEl.classList.add(cls);
+  }
+}
+
+    
     // ---------- LAST DATA ----------
     async function loadData() {
       if (!ark) {
@@ -96,17 +123,22 @@
           if (isWeekend(d)) tr.classList.add("weekend");
 
           tr.innerHTML = `
-            <td><input type="text" value="${fmtDato(d)}" readonly></td>
-            <td><input type="text" id="inntid-${i}" value="${r.inntid || ""}"></td>
-            <td><input type="text" id="uttid-${i}" value="${r.uttid || ""}"></td>
-            <td>
-              <select id="aktivitet-${i}">
-                ${optionHtml(r.aktivitet)}
-              </select>
-            </td>
-          `;
-          tableEl.appendChild(tr);
-        });
+  <td><input type="text" value="${formatDatoLang(d)}" readonly></td>
+  <td><input type="text" id="inntid-${i}" value="${r.inntid || ""}"></td>
+  <td><input type="text" id="uttid-${i}" value="${r.uttid || ""}"></td>
+  <td class="act-cell">
+    <select id="aktivitet-${i}">
+      ${optionHtml(r.aktivitet)}
+    </select>
+  </td>
+`;
+tableEl.appendChild(tr);
+
+// init + endre farge ved valg
+const sel = tr.querySelector(`#aktivitet-${i}`);
+applyActivityStyle(sel);
+sel.addEventListener("change", () => applyActivityStyle(sel));
+
 
       } catch (err) {
         console.error(err);
@@ -157,31 +189,48 @@
 }
 
     // ---------- LIM INN FLERE CELLER ----------
-    document.querySelector("#data").addEventListener("paste", function (e) {
-      const active = document.activeElement;
-      if (!active || active.tagName !== "INPUT") return;
+   document.querySelector("#data").addEventListener("paste", function (e) {
+  const active = document.activeElement;
+  if (!active || (active.tagName !== "INPUT" && active.tagName !== "SELECT")) return;
 
-      const paste = (e.clipboardData || window.clipboardData).getData("text");
-      const lines = paste.trim().split(/\r?\n/).map(l => l.split(/\t/));
+  const paste = (e.clipboardData || window.clipboardData).getData("text");
+  const lines = paste.trim().split(/\r?\n/).map(l => l.split(/\t/));
 
-      if (lines.length === 1 && lines[0].length === 1) return; // vanlig lim-inn
+  if (lines.length === 1 && lines[0].length === 1) return; // vanlig lim-inn
 
-      e.preventDefault();
+  e.preventDefault();
 
-      const tr = active.closest("tr");
-      const rowIndex = [...tr.parentNode.children].indexOf(tr);
-      const allInputs = Array.from(tr.querySelectorAll("input, select"));
-      const colIndex = allInputs.indexOf(active);
+  const tr = active.closest("tr");
+  const rowIndex = [...tr.parentNode.children].indexOf(tr);
+  const startCol = [...tr.querySelectorAll("td")].findIndex(td => td.contains(active));
 
-      lines.forEach((rowVals, i) => {
-        const row = document.querySelectorAll("#data tr")[rowIndex + i];
-        if (!row) return;
-        const inputs = row.querySelectorAll("input, select");
-        rowVals.forEach((val, j) => {
-          if (inputs[colIndex + j]) inputs[colIndex + j].value = val.trim();
-        });
-      });
+  lines.forEach((rowVals, i) => {
+    const row = document.querySelectorAll("#data tr")[rowIndex + i];
+    if (!row) return;
+
+    const fields = [
+      row.querySelector("td:nth-child(1) input[readonly]"),
+      row.querySelector("td:nth-child(2) input"),
+      row.querySelector("td:nth-child(3) input"),
+      row.querySelector("td:nth-child(4) select")
+    ];
+
+    rowVals.forEach((val, j) => {
+      const target = fields[startCol + j];
+      if (!target) return;
+
+      if (target.tagName === "SELECT") {
+        const clean = val.trim();
+        const idx = aktivitetValg.findIndex(v => v.toLowerCase() === clean.toLowerCase());
+        target.value = idx >= 0 ? aktivitetValg[idx] : clean; // fallback: sett teksten
+        applyActivityStyle(target);
+      } else {
+        target.value = val.trim();
+      }
     });
+  });
+});
+
 
     // ---------- INIT ----------
     saveBtn.addEventListener("click", saveData);
