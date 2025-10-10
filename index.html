@@ -4,13 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Produksjonsskjema</title>
-
-  <!-- Anbefalt: ha style.css ved siden av denne fila -->
-  <link rel="stylesheet" href="style.css?v=5" />
+  <link rel="stylesheet" href="style.css?v=6" />
 </head>
 <body>
 
- <!-- SIDE-HEADER (mørk bakgrunn + hvit logo) -->
+  <!-- SIDE-HEADER (mørk bakgrunn + hvit logo) -->
   <header class="site-header">
     <img src="logo-white.png" alt="Bærum Kulturhus" class="brand-logo" />
   </header>
@@ -37,24 +35,36 @@
     <h2 id="title">Laster…</h2>
 
     <table id="data">
-  <tr>
-    <th>Dato</th>
-    <th>Inn-tid</th>
-    <th>Ut-tid</th>
-    <th>Aktivitet</th>
-    <th>Kommentar</th> <!-- NEW -->
-  </tr>
-</table>
-
+      <tr>
+        <th>Dato</th>
+        <th>Inn-tid</th>
+        <th>Ut-tid</th>
+        <th>Aktivitet</th>
+        <th>Kommentar</th>
+      </tr>
+    </table>
 
     <button id="saveBtn">💾 Lagre endringer</button>
     <span id="lastSaved"></span>
     <div id="toast" class="toast">✅ Endringer lagret!</div>
+
+    <!-- Vises etter vellykket lagring -->
+    <div id="confirmBlock" style="display:none; margin-top:18px;">
+      <label style="display:flex; gap:8px; align-items:center;">
+        <input type="checkbox" id="confirmChk">
+        <span>Jeg bekrefter at jeg har fylt ut og trykket «Lagre endringer»</span>
+      </label>
+
+      <button id="submitBtn" disabled
+        style="margin-top:10px; padding:10px 18px; background:#2e7d32; color:#fff; border:none; border-radius:8px; cursor:not-allowed;">
+        Send inn skjema
+      </button>
+    </div>
   </main>
 
   <script>
     // ---------- KONFIG ----------
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhFCFI7GTThEzfPY37xxU9WTT3fyJTgY-Q-3utJFYYIcz5yeb-lrpYYpQ9qe24Tk1i8Q/exec"; // <-- DIN /exec-URL
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhFCFI7GTThEzfPY37xxU9WTT3fyJTgY-Q-3utJFYYIcz5yeb-lrpYYpQ9qe24Tk1i8Q/exec"; // /exec-URL
     const params = new URLSearchParams(window.location.search);
     const ark = params.get("ark") || "";
 
@@ -75,25 +85,13 @@
     const saveBtn = document.getElementById("saveBtn");
     const lastSavedEl = document.getElementById("lastSaved");
     const toastEl = document.getElementById("toast");
+    const confirmBlock = document.getElementById("confirmBlock");
+    const confirmChk = document.getElementById("confirmChk");
+    const submitBtn = document.getElementById("submitBtn");
 
     // ---------- HJELP ----------
-    function capitalizeFirst(str) {
-  return str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
-}
-function formatDatoLang(d) {
-  const s = d.toLocaleDateString("no-NO", {
-    weekday: "long",
-    day: "2-digit",
-    month: "long"
-  });
-  return capitalizeFirst(s);
-}
-
-
-    function isWeekend(d) {
-      const day = d.getDay();
-      return day === 0 || day === 6; // søn/lør
-    }
+    function capFirst(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+    function isWeekend(d) { const day = d.getDay(); return day === 0 || day === 6; }
 
     function optionHtml(current) {
       return aktivitetValg
@@ -106,199 +104,213 @@ function formatDatoLang(d) {
     }
 
     const activityClassMap = {
-  "Rigg": "rigg",
-  "Prøver": "prøver",
-  "Forestilling": "forestilling",
-  "Forestilling x2": "forestillingx2",
-  "Forestilling x3": "forestillingx3",
-  "Spillefri": "spillefri",
-  "Annet": "annet",
-  "—": ""
-};
+      "Rigg": "rigg",
+      "Prøver": "prøver",
+      "Forestilling": "forestilling",
+      "Forestilling x2": "forestillingx2",
+      "Forestilling x3": "forestillingx3",
+      "Spillefri": "spillefri",
+      "Annet": "annet",
+      "—": ""
+    };
 
-function applyActivityStyle(selectEl) {
-  const td = selectEl.closest("td");
-  td.className = "act-cell";     // reset
-  selectEl.className = "";       // reset
-  const cls = activityClassMap[selectEl.value] || "";
-  if (cls) {
-    td.classList.add(cls);
-    selectEl.classList.add(cls);
-  }
-}
-
-    
-    // ---------- LAST DATA ----------
-    
-  // Hjelp: gjør første bokstav stor (i tilfelle locale gir liten)
-  function capFirst(s) {
-    return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-  }
-
-  async function loadData() {
-    if (!ark) {
-      titleEl.textContent = "Mangler ?ark= i URL";
-      return;
+    function applyActivityStyle(selectEl) {
+      const td = selectEl.closest("td");
+      td.className = "act-cell";     // reset
+      selectEl.className = "";       // reset
+      const cls = activityClassMap[selectEl.value] || "";
+      if (cls) {
+        td.classList.add(cls);
+        selectEl.classList.add(cls);
+      }
     }
-    titleEl.textContent = "Skjema – " + ark;
 
-    try {
-      const res = await fetch(`${SCRIPT_URL}?ark=${encodeURIComponent(ark)}`, {
-        method: "GET",
-        mode: "cors",
-      });
-      if (!res.ok) throw new Error(`GET feilet: ${res.status}`);
-      const json = await res.json();
+    // ---------- JSONP CALLBACK (bypasser CORS) ----------
+    function handleRowsJSONP(json) {
+      try {
+        if (!json || !Array.isArray(json.rows)) {
+          throw new Error("Ugyldig JSONP-svar");
+        }
 
-      json.rows.forEach((r, i) => {
-        // r.dato kan komme som streng – lag Date
-        const d = new Date(r.dato);
+        titleEl.textContent = ark;
 
-        // Fullt ukedagsnavn + resten av datoen
-        const weekday = capFirst(d.toLocaleDateString("no-NO", { weekday: "long" }));
-        const rest    = d.toLocaleDateString("no-NO", { day: "2-digit", month: "long" });
+        json.rows.forEach((r, i) => {
+          const d = new Date(r.dato);
+          const weekday = capFirst(d.toLocaleDateString("no-NO", { weekday: "long" }));
+          const rest    = d.toLocaleDateString("no-NO", { day: "2-digit", month: "long" });
+          const weekend = isWeekend(d);
 
-        // Marker helg
-        const weekend = d.getDay() === 0 || d.getDay() === 6;
+          // Standard aktivitet = "Prøver" hvis tomt/streken
+          const currentAktivitet =
+            (r.aktivitet && r.aktivitet.trim() && r.aktivitet.trim() !== "—")
+              ? r.aktivitet
+              : "Prøver";
 
-        // Standard aktivitet = "Prøver" hvis tomt/streken
-        const currentAktivitet =
-          (r.aktivitet && r.aktivitet.trim() && r.aktivitet.trim() !== "—")
-            ? r.aktivitet
-            : "Prøver";
+          const tr = document.createElement("tr");
+          if (weekend) tr.classList.add("weekend");
 
-        // Bygg rad
-        const tr = document.createElement("tr");
-        if (weekend) tr.classList.add("weekend");
+          tr.innerHTML = `
+            <td class="date-td"><span class="weekday">${weekday}</span> ${rest}</td>
+            <td><input type="text" id="inntid-${i}" value="${r.inntid || ""}"></td>
+            <td><input type="text" id="uttid-${i}" value="${r.uttid || ""}"></td>
+            <td class="act-cell">
+              <select id="aktivitet-${i}">
+                ${optionHtml(currentAktivitet)}
+              </select>
+            </td>
+            <td><input type="text" id="kommentar-${i}" value="${r.kommentar || ""}"></td>
+          `;
 
-        tr.innerHTML = `
-          <td class="date-td">
-            <span class="weekday">${weekday}</span>${rest ? " " + rest : ""}
-          </td>
-          <td><input type="text" id="inntid-${i}" value="${r.inntid || ""}"></td>
-          <td><input type="text" id="uttid-${i}" value="${r.uttid || ""}"></td>
-          <td class="act-cell">
-            <select id="aktivitet-${i}">
-              ${optionHtml(currentAktivitet)}
-            </select>
-          </td>
-        `;
+          // Farg aktivitetscellen + select
+          const sel = tr.querySelector(`#aktivitet-${i}`);
+          applyActivityStyle(sel);
+          sel.addEventListener("change", () => applyActivityStyle(sel));
 
-        tableEl.appendChild(tr);
-      });
-    } catch (err) {
-      console.error(err);
-      alert("Kunne ikke hente data fra arket. Sjekk API-lenken.");
+          tableEl.appendChild(tr);
+        });
+
+      } catch (err) {
+        console.error(err);
+        titleEl.textContent = "Kunne ikke rendre data";
+        alert(err.message);
+      }
     }
-  }
+
+    // ---------- LAST DATA (JSONP) ----------
+    function loadData() {
+      if (!ark) {
+        titleEl.textContent = "Mangler ?ark= i URL";
+        return;
+      }
+      titleEl.textContent = "Laster…";
+
+      const cbName = "handleRowsJSONP";
+      const src = `${SCRIPT_URL}?ark=${encodeURIComponent(ark)}&callback=${cbName}`;
+
+      const s = document.createElement("script");
+      s.src = src;
+      s.onerror = () => {
+        titleEl.textContent = "Feil ved henting av data";
+        alert("Klarte ikke laste data (JSONP). Sjekk SCRIPT_URL og ark-navn.");
+      };
+      document.body.appendChild(s);
+    }
 
     // ---------- LAGRE ----------
     async function saveData() {
-  saveBtn.textContent = "⏳ Lagrer…";
-  saveBtn.disabled = true;
+      saveBtn.textContent = "⏳ Lagrer…";
+      saveBtn.disabled = true;
 
-  const rows = [];
-  document.querySelectorAll("input[id^='inntid-']").forEach(inp => {
-    const i = inp.id.split("-")[1];
-rows.push({
-  row: parseInt(i, 10) + 2,
-  inntid: document.getElementById(`inntid-${i}`).value,
-  uttid: document.getElementById(`uttid-${i}`).value,
-  aktivitet: document.getElementById(`aktivitet-${i}`).value,
-  kommentar: document.getElementById(`kommentar-${i}`).value
-});
+      const rows = [];
+      // Bruk aktivitet-selectene som “fasit” for antall rader
+      document.querySelectorAll("select[id^='aktivitet-']").forEach(sel => {
+        const i = sel.id.split("-")[1];
+        rows.push({
+          row: parseInt(i, 10) + 2, // +2 pga header + 1-index i Sheets
+          inntid: document.getElementById(`inntid-${i}`).value || "",
+          uttid: document.getElementById(`uttid-${i}`).value || "",
+          aktivitet: document.getElementById(`aktivitet-${i}`).value || "",
+          kommentar: document.getElementById(`kommentar-${i}`).value || ""
+        });
+      });
 
+      try {
+        // text/plain + no-cors => ingen preflight/CORS-feil
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ ark, rows })
+        });
 
-  try {
-    // Viktig: text/plain og no-cors => ingen preflight, og vi bryr oss ikke om svar-innhold
-    await fetch(SCRIPT_URL, {
-      method: "POST",
-      mode: "no-cors", // <- gjør requesten “opaque”, ingen CORS-feil i UI
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ ark, rows })
+        // Anta suksess (opaque). God UX:
+        saveBtn.textContent = "✅ Lagret";
+        toastEl.classList.add("show");
+        const now = new Date().toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
+        lastSavedEl.textContent = "Sist lagret: " + now;
+
+        // Vis bekreftelsesblokk for innsending
+        confirmBlock.style.display = "block";
+      } catch (err) {
+        console.error(err);
+        saveBtn.textContent = "⚠️ Feil ved lagring";
+      } finally {
+        setTimeout(() => {
+          toastEl.classList.remove("show");
+          saveBtn.textContent = "💾 Lagre endringer";
+          saveBtn.disabled = false;
+        }, 2000);
+      }
+    }
+
+    // ---------- “Send inn skjema” flyt ----------
+    confirmChk.addEventListener("change", () => {
+      submitBtn.disabled = !confirmChk.checked;
+      submitBtn.style.cursor = confirmChk.checked ? "pointer" : "not-allowed";
+      submitBtn.style.opacity = confirmChk.checked ? "1" : ".7";
     });
 
-    // Anta suksess (request ble sendt). Gi god UX:
-    saveBtn.textContent = "✅ Lagret";
-    toastEl.classList.add("show");
-    const now = new Date().toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
-    lastSavedEl.textContent = "Sist lagret: " + now;
-  } catch (err) {
-    console.error(err);
-    saveBtn.textContent = "⚠️ Feil ved lagring";
-  } finally {
-    setTimeout(() => {
-      toastEl.classList.remove("show");
-      saveBtn.textContent = "💾 Lagre endringer";
-      saveBtn.disabled = false;
-    }, 2000);
-  }
-}
-
-<div id="confirmBlock" style="display:none; margin-top:18px;">
-  <label style="display:flex; gap:8px; align-items:center;">
-    <input type="checkbox" id="confirmChk">
-    <span>Jeg bekrefter at jeg har fylt ut og trykket «Lagre endringer»</span>
-  </label>
-
-  <button id="submitBtn" disabled style="margin-top:10px; padding:10px 18px; background:#2e7d32; color:#fff; border:none; border-radius:8px; cursor:not-allowed;">
-    Send inn skjema
-  </button>
-</div>
-
-                                                            
+    submitBtn.addEventListener("click", () => {
+      // Enkel kvittering – Jotform vil uansett stå for endelig innsending/redirect.
+      submitBtn.textContent = "Sendt!";
+      submitBtn.disabled = true;
+      alert("Takk! Skjemaet er sendt inn. Du kan lukke vinduet.");
+    });
 
     // ---------- LIM INN FLERE CELLER ----------
-   document.querySelector("#data").addEventListener("paste", function (e) {
-  const active = document.activeElement;
-  if (!active || (active.tagName !== "INPUT" && active.tagName !== "SELECT")) return;
+    document.querySelector("#data").addEventListener("paste", function (e) {
+      const active = document.activeElement;
+      if (!active || (active.tagName !== "INPUT" && active.tagName !== "SELECT")) return;
 
-  const paste = (e.clipboardData || window.clipboardData).getData("text");
-  const lines = paste.trim().split(/\r?\n/).map(l => l.split(/\t/));
+      const paste = (e.clipboardData || window.clipboardData).getData("text");
+      const lines = paste.trim().split(/\r?\n/).map(l => l.split(/\t/));
 
-  if (lines.length === 1 && lines[0].length === 1) return; // vanlig lim-inn
+      if (lines.length === 1 && lines[0].length === 1) return; // vanlig lim-inn
 
-  e.preventDefault();
+      e.preventDefault();
 
-  const tr = active.closest("tr");
-  const rowIndex = [...tr.parentNode.children].indexOf(tr);
-  const startCol = [...tr.querySelectorAll("td")].findIndex(td => td.contains(active));
+      const tr = active.closest("tr");
+      const rowIndex = [...tr.parentNode.children].indexOf(tr);
 
-  lines.forEach((rowVals, i) => {
-    const row = document.querySelectorAll("#data tr")[rowIndex + i];
-    if (!row) return;
+      // Kolonnerekkefølge: 1 Dato (readonly), 2 Inn, 3 Ut, 4 Aktivitet (select), 5 Kommentar
+      const fields = (row) => ([
+        row.querySelector("td:nth-child(1) input[readonly]"),
+        row.querySelector("td:nth-child(2) input"),
+        row.querySelector("td:nth-child(3) input"),
+        row.querySelector("td:nth-child(4) select"),
+        row.querySelector("td:nth-child(5) input"),
+      ]);
 
-    const fields = [
-      row.querySelector("td:nth-child(1) input[readonly]"),
-      row.querySelector("td:nth-child(2) input"),
-      row.querySelector("td:nth-child(3) input"),
-      row.querySelector("td:nth-child(4) select")
-    ];
+      // Finn startkolonne i aktuell rad
+      const rowFields = fields(tr);
+      const startCol = rowFields.findIndex(el => el === active);
 
-    rowVals.forEach((val, j) => {
-      const target = fields[startCol + j];
-      if (!target) return;
+      lines.forEach((rowVals, i) => {
+        const row = document.querySelectorAll("#data tr")[rowIndex + i];
+        if (!row) return;
 
-      if (target.tagName === "SELECT") {
-        const clean = val.trim();
-        const idx = aktivitetValg.findIndex(v => v.toLowerCase() === clean.toLowerCase());
-        target.value = idx >= 0 ? aktivitetValg[idx] : clean; // fallback: sett teksten
-        applyActivityStyle(target);
-      } else {
-        target.value = val.trim();
-      }
+        const f = fields(row);
+
+        rowVals.forEach((val, j) => {
+          const target = f[startCol + j];
+          if (!target) return;
+
+          if (target.tagName === "SELECT") {
+            const clean = val.trim();
+            const idx = aktivitetValg.findIndex(v => v.toLowerCase() === clean.toLowerCase());
+            target.value = idx >= 0 ? aktivitetValg[idx] : clean; // fallback: sett teksten
+            applyActivityStyle(target);
+          } else {
+            target.value = val.trim();
+          }
+        });
+      });
     });
-  });
-});
-
-     console.log("ark param:", ark);
-
-
 
     // ---------- INIT ----------
+    console.log("ark param:", ark);
     saveBtn.addEventListener("click", saveData);
     loadData();
   </script>
 </body>
 </html>
-
