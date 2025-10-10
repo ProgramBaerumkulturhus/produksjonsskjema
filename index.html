@@ -135,39 +135,62 @@
         titleEl.textContent = ark;
 
         json.rows.forEach((r, i) => {
-          const d = new Date(r.dato);
-          const weekday = capFirst(d.toLocaleDateString("no-NO", { weekday: "long" }));
-          const rest    = d.toLocaleDateString("no-NO", { day: "2-digit", month: "long" });
-          const weekend = isWeekend(d);
+  // r.dato kan være ferdig formattert tekst ("Onsdag 01. oktober").
+  let weekday = "";
+  let rest = "";
+  let weekend = false;
 
-          // Standard aktivitet = "Prøver" hvis tomt/streken
-          const currentAktivitet =
-            (r.aktivitet && r.aktivitet.trim() && r.aktivitet.trim() !== "—")
-              ? r.aktivitet
-              : "Prøver";
+  // Prøv ekte Date først (i tilfelle du senere sender ISO fra Apps Script)
+  let d = new Date(r.dato);
+  if (!isNaN(d)) {
+    weekday = capFirst(d.toLocaleDateString("no-NO", { weekday: "long" }));
+    rest    = d.toLocaleDateString("no-NO", { day: "2-digit", month: "long" });
+    weekend = (d.getDay() === 0 || d.getDay() === 6);
+  } else {
+    // Fallback: del opp den norske teksten
+    const raw = (r.dato || "").toString().trim();
+    if (raw) {
+      const firstSpace = raw.indexOf(" ");
+      if (firstSpace > 0) {
+        weekday = capFirst(raw.slice(0, firstSpace));
+        rest    = raw.slice(firstSpace + 1);           // "01. oktober"
+      } else {
+        weekday = capFirst(raw);
+        rest    = "";
+      }
+      const w = weekday.toLowerCase();
+      weekend = w.startsWith("lør") || w.startsWith("søn");
+    }
+  }
 
-          const tr = document.createElement("tr");
-          if (weekend) tr.classList.add("weekend");
+  // Standard aktivitet = "Prøver" hvis tomt/— 
+  const currentAktivitet =
+    (r.aktivitet && r.aktivitet.trim() && r.aktivitet.trim() !== "—")
+      ? r.aktivitet
+      : "Prøver";
 
-          tr.innerHTML = `
-            <td class="date-td"><span class="weekday">${weekday}</span> ${rest}</td>
-            <td><input type="text" id="inntid-${i}" value="${r.inntid || ""}"></td>
-            <td><input type="text" id="uttid-${i}" value="${r.uttid || ""}"></td>
-            <td class="act-cell">
-              <select id="aktivitet-${i}">
-                ${optionHtml(currentAktivitet)}
-              </select>
-            </td>
-            <td><input type="text" id="kommentar-${i}" value="${r.kommentar || ""}"></td>
-          `;
+  const tr = document.createElement("tr");
+  if (weekend) tr.classList.add("weekend");
 
-          // Farg aktivitetscellen + select
-          const sel = tr.querySelector(`#aktivitet-${i}`);
-          applyActivityStyle(sel);
-          sel.addEventListener("change", () => applyActivityStyle(sel));
+  tr.innerHTML = `
+    <td class="date-td"><span class="weekday">${weekday}</span> ${rest}</td>
+    <td><input type="text" id="inntid-${i}" value="${r.inntid || ""}"></td>
+    <td><input type="text" id="uttid-${i}" value="${r.uttid || ""}"></td>
+    <td class="act-cell">
+      <select id="aktivitet-${i}">
+        ${optionHtml(currentAktivitet)}
+      </select>
+    </td>
+    <td><input type="text" id="kommentar-${i}" value="${r.kommentar || ""}"></td>
+  `;
 
-          tableEl.appendChild(tr);
-        });
+  const sel = tr.querySelector(`#aktivitet-${i}`);
+  applyActivityStyle(sel);
+  sel.addEventListener("change", () => applyActivityStyle(sel));
+
+  tableEl.appendChild(tr);
+});
+
 
       } catch (err) {
         console.error(err);
