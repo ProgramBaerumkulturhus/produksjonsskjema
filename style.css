@@ -1,84 +1,88 @@
-/* =======================
-   Generelt & layout
-   ======================= */
-body {
-  font-family: "Century Gothic", system-ui, sans-serif;
-  background: #fafafa;
-  color: #222;
-  max-width: 1100px;       /* smalere side */
-  margin: 40px auto;       /* sentrert */
-  padding: 0 16px;         /* litt luft på små skjermer */
+/* Brand-farger */
+:root{
+  --brand-bg: #4c0d2b;   /* mørk bakgrunn (matcher Jotform-temaet ditt) */
+  --brand-accent: #67123b; /* knapper/markering */
+  --page-text-on-dark: #f7eef3;
 }
-h2 { font-weight: 600; margin-bottom: 16px; }
-#lastSaved { font-size: 13px; color: #555; margin-left: 10px; }
 
-/* Intro-blokk */
-.intro { margin: 0 0 18px 0; }
-.intro h1 { margin: 0 0 6px 0; font-size: 28px; font-weight: 700; }
-.intro p { margin: 6px 0; line-height: 1.5; }
-.intro .bullets { margin: 8px 0 6px 18px; }
+/* Hele siden */
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--brand-bg);
+  color: var(--page-text-on-dark);
+  font-family: "Century Gothic", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+/* Toppstripe med logo */
+.site-header{
+  display:flex; align-items:center; justify-content:center;
+  padding: 20px 12px 28px;
+  background: var(--brand-bg);
+}
+.brand-logo{
+  height: 54px; width: auto; display:block;
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,.15));
+}
+
+/* Hvit “kort”-flate som matcher Jotform */
+.sheet-card{
+  background:#fff; color:#222;
+  max-width: 1100px;
+  margin: 0 auto 48px;
+  padding: 28px 28px 32px;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+}
+
+/* Introblokk */
+.intro { margin-bottom: 18px; }
+.intro h1 { margin: 0 0 6px; font-size: 28px; font-weight: 700; color:#2a2a2a; }
+.intro p { margin: 6px 0; line-height: 1.5; color:#3a3a3a; }
+.intro .bullets { margin: 8px 0 10px 18px; color:#333; }
 .intro .bullets li { margin: 4px 0; }
 .intro .hint {
-  display: inline-block;
-  margin-top: 8px;
-  background: #fff3cd;
-  color: #5c4700;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid #ffe08a;
-  font-weight: 600;
+  display:inline-block; margin-top: 8px;
+  background:#fff3cd; color:#5c4700;
+  padding: 8px 12px; border-radius: 8px;
+  border: 1px solid #ffe08a; font-weight: 700;
 }
 
-/* =======================
-   Tabell
-   ======================= */
-table { border-collapse: collapse; width: 100%; margin-top: 12px; background: #fff; }
+/* Seksjonstittel over tabellen */
+h2 { font-weight: 700; margin: 18px 0 12px; color:#222; }
+
+/* Tabell */
+table { border-collapse: collapse; width: 100%; background:#fff; }
 th, td { border: 1px solid #e6e6e6; padding: 10px; text-align: left; }
 th { background: #f5f5f5; font-weight: 600; }
 tr.weekend { background: #fdeff3; } /* mild rosa for lør/søn */
 
-/* Dato-celle som ren tekst (og fallback hvis noen datoer fortsatt er input) */
-.date-td { background: transparent; }
-.date-td .weekday { font-weight: 700; }              /* ukedag i bold */
-.date-td input[type="text"] {                         /* fallback – fjern “pillen” */
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
+/* DATOFELT – flatt “lesefelt” uten ekstra boks */
+input[type=text][readonly]{
+  width:100%; padding: 10px 12px;
+  border: 0; background:#f3f3f3; border-radius: 10px;
+  font-weight: 600; /* gjør ukedagsnavn “bold” */
 }
 
-/* =======================
-   Inputs & Select – flate
-   ======================= */
-input[type=text],
-select {
-  width: 100%;
-  padding: 10px 12px;
-  border: 0;                 /* flatt, ingen kant */
-  background: transparent;   /* la rad-/cellefarge skinne gjennom */
-  border-radius: 8px;
-  font: inherit;
-  box-sizing: border-box;
-  outline: none;             /* vi styrer fokus selv */
+/* Aktive redigerbare felt (inn/ut-tid + dropdown) – flate */
+input[type=text]:not([readonly]),
+select{
+  width:100%; padding: 10px 12px;
+  border: 0; background: transparent;
+  border-radius: 10px; font: inherit; box-sizing: border-box;
+  outline: none;
 }
 
-/* Fokus – diskret ring i merke-fargen */
+/* Fokus – subtil ring i brand-farge */
 input[type=text]:focus,
-select:focus {
-  box-shadow: 0 0 0 2px #67123b33;
-}
+select:focus { box-shadow: 0 0 0 2px #67123b33; }
 
-/* Lesefelt må være helt flate */
-input[readonly] { background: transparent; }
-
-/* Penere select-kontroll med egen pil */
-select {
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;               /* fjern systempil */
-  padding-right: 34px;            /* plass til pilen */
-  position: relative;
+/* Penere select-kontroll (egen pil, ingen grå OS-boks) */
+select{
+  -webkit-appearance: none; -moz-appearance: none; appearance: none;
+  padding-right: 34px; background-color: transparent;
   background-image: url("data:image/svg+xml;utf8,\
-    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='20' height='20'>\
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='18' height='18'>\
       <path fill='%2367123b' d='M7 10l5 5 5-5z'/>\
     </svg>");
   background-repeat: no-repeat;
@@ -86,52 +90,36 @@ select {
   background-size: 18px 18px;
 }
 
-/* Når celle/valg fargesettes, la select følge */
-select.rigg, select.prøver, select.forestilling,
-select.forestillingx2, select.forestillingx3,
-select.spillefri, select.annet {
-  background-color: transparent; /* fargen kommer fra td + klasse */
-}
-
-/* Aktivitet-farger */
-td.act-cell.rigg,            select.rigg            { background: #d8c7ff; }
-td.act-cell.prøver,          select.prøver          { background: #fff8c4; }
-td.act-cell.forestilling,    select.forestilling    { background: #c9f5cb; }
-td.act-cell.forestillingx2,  select.forestillingx2  { background: #b4e6b8; }
-td.act-cell.forestillingx3,  select.forestillingx3  { background: #9fdba5; }
-td.act-cell.spillefri,       select.spillefri       { background: #f8c5c5; }
-td.act-cell.annet,           select.annet           { background: #e3e3e3; }
-
+/* Aktivitet-farger (celle + select får samme bakgrunn) */
+td.act-cell.rigg,      select.rigg      { background:#d8c7ff; }
+td.act-cell.prøver,    select.prøver    { background:#fff8c4; }
+td.act-cell.forestilling,   select.forestilling   { background:#c9f5cb; }
+td.act-cell.forestillingx2, select.forestillingx2 { background:#b4e6b8; }
+td.act-cell.forestillingx3, select.forestillingx3 { background:#9fdba5; }
+td.act-cell.spillefri, select.spillefri { background:#f8c5c5; }
+td.act-cell.annet,     select.annet     { background:#e3e3e3; }
 td.act-cell, select { transition: background .15s ease; }
 
-/* =======================
-   Lagre-knapp & Toast
-   ======================= */
-#saveBtn {
-  margin-top: 18px;
-  padding: 12px 20px;
-  background: #67123b;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 15px;
-  transition: background .2s ease;
+/* Lagre-knapp + status */
+#saveBtn{
+  margin-top: 18px; padding: 12px 20px;
+  background: var(--brand-accent);
+  color:#fff; border:none; border-radius: 10px;
+  cursor:pointer; font-size: 15px; transition: background .2s;
 }
-#saveBtn:hover { background: #4c0d2b; }
-#saveBtn.saved { background: #2e7d32; }
+#saveBtn:hover { background:#4c0d2b; }
+#saveBtn.saved { background:#2e7d32; }
+#lastSaved { margin-left: 10px; font-size: 13px; color:#555; }
 
-.toast {
-  position: fixed;
-  bottom: 28px;
-  right: 28px;
-  background: #2e7d32;
-  color: #fff;
-  padding: 12px 16px;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,.18);
-  opacity: 0;
-  transform: translateY(12px);
-  transition: all .25s ease;
+/* Toast */
+.toast{
+  position: fixed; bottom: 28px; right: 28px; background:#2e7d32; color:#fff;
+  padding: 12px 16px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,.18);
+  opacity:0; transform: translateY(12px); transition: all .25s ease;
 }
-.toast.show { opacity: 1; transform: translateY(0); }
+.toast.show{ opacity:1; transform: translateY(0); }
+
+/* Responsiv liten innsnevring på svært smale skjermer */
+@media (max-width: 640px){
+  .sheet-card{ border-radius: 0; margin: 0; min-height: calc(100vh - 100px); }
+}
