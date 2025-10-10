@@ -1,19 +1,19 @@
-
-  /* Generelt */
-  body { font-family: "Century Gothic", system-ui, sans-serif; margin: 40px; background:#fafafa; color:#222; }
-  h2 { font-weight: 600; margin-bottom: 16px; }
-  #lastSaved { font-size: 13px; color: #555; margin-left: 10px; }
-
-  /* Tabell */
-  table { border-collapse: collapse; width: 100%; margin-top: 12px; background:#fff; }
-  th, td { border: 1px solid #e6e6e6; padding: 10px; text-align: left; }
-  th { background: #f5f5f5; font-weight: 600; }
-  tr.weekend { background: #fdeff3; } /* mild rosa for lør/søn */
-
-
+/* =======================
+   Generelt & layout
+   ======================= */
+body {
+  font-family: "Century Gothic", system-ui, sans-serif;
+  background: #fafafa;
+  color: #222;
+  max-width: 1100px;       /* smalere side */
+  margin: 40px auto;       /* sentrert */
+  padding: 0 16px;         /* litt luft på små skjermer */
+}
+h2 { font-weight: 600; margin-bottom: 16px; }
+#lastSaved { font-size: 13px; color: #555; margin-left: 10px; }
 
 /* Intro-blokk */
-.intro { max-width: 1100px; margin: 0 0 18px 0; }
+.intro { margin: 0 0 18px 0; }
 .intro h1 { margin: 0 0 6px 0; font-size: 28px; font-weight: 700; }
 .intro p { margin: 6px 0; line-height: 1.5; }
 .intro .bullets { margin: 8px 0 6px 18px; }
@@ -29,60 +29,54 @@
   font-weight: 600;
 }
 
+/* =======================
+   Tabell
+   ======================= */
+table { border-collapse: collapse; width: 100%; margin-top: 12px; background: #fff; }
+th, td { border: 1px solid #e6e6e6; padding: 10px; text-align: left; }
+th { background: #f5f5f5; font-weight: 600; }
+tr.weekend { background: #fdeff3; } /* mild rosa for lør/søn */
 
+/* Dato-celle som ren tekst (og fallback hvis noen datoer fortsatt er input) */
+.date-td { background: transparent; }
+.date-td .weekday { font-weight: 700; }              /* ukedag i bold */
+.date-td input[type="text"] {                         /* fallback – fjern “pillen” */
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
 
-  /* Inputs – flate, uten indre kant */
+/* =======================
+   Inputs & Select – flate
+   ======================= */
 input[type=text],
 select {
   width: 100%;
   padding: 10px 12px;
-  border: 0;                  /* ← fjerner “boks i boks” */
-  background: transparent;    /* flatt */
+  border: 0;                 /* flatt, ingen kant */
+  background: transparent;   /* la rad-/cellefarge skinne gjennom */
   border-radius: 8px;
   font: inherit;
   box-sizing: border-box;
-  outline: none;              /* vi styrer fokus selv */
+  outline: none;             /* vi styrer fokus selv */
 }
 
-/* Fokusstil – subtil “ring” som matcher primærfargen */
+/* Fokus – diskret ring i merke-fargen */
 input[type=text]:focus,
 select:focus {
-  box-shadow: 0 0 0 2px #67123b33; /* diskret ring */
+  box-shadow: 0 0 0 2px #67123b33;
 }
 
-/* Lesefelt */
-input[readonly] { background: #f7f7f7; }
+/* Lesefelt må være helt flate */
+input[readonly] { background: transparent; }
 
-
-  /* Lagre-knapp */
-  #saveBtn {
-    margin-top: 18px; padding: 12px 20px; background: #67123b;
-    color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 15px;
-    transition: background .2s ease;
-  }
-  #saveBtn:hover { background: #4c0d2b; }
-  #saveBtn.saved { background: #2e7d32; }
-
-  /* Toast */
-  .toast {
-    position: fixed; bottom: 28px; right: 28px; background: #2e7d32; color:#fff;
-    padding: 12px 16px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,.18);
-    opacity: 0; transform: translateY(12px); transition: all .25s ease;
-  }
-  .toast.show { opacity: 1; transform: translateY(0); }
-
-  /* Penere select-kontroll */
+/* Penere select-kontroll med egen pil */
 select {
   -webkit-appearance: none;
   -moz-appearance: none;
-  appearance: none;                  /* fjern systempil */
-  background-color: transparent;     /* lar rad-fargen skinne gjennom */
-  padding-right: 34px;               /* plass til pil */
+  appearance: none;               /* fjern systempil */
+  padding-right: 34px;            /* plass til pilen */
   position: relative;
-}
-
-/* Egendefinert pil (SVG) */
-select {
   background-image: url("data:image/svg+xml;utf8,\
     <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='20' height='20'>\
       <path fill='%2367123b' d='M7 10l5 5 5-5z'/>\
@@ -92,23 +86,52 @@ select {
   background-size: 18px 18px;
 }
 
-/* Når celle/valg farger settes, la select følge */
+/* Når celle/valg fargesettes, la select følge */
 select.rigg, select.prøver, select.forestilling,
 select.forestillingx2, select.forestillingx3,
 select.spillefri, select.annet {
-  background-color: transparent;   /* fargen kommer fra klassen + td */
+  background-color: transparent; /* fargen kommer fra td + klasse */
 }
 
-/* Rad/celle-farger (som før) */
-td.act-cell.rigg,      select.rigg      { background:#d8c7ff; }
-td.act-cell.prøver,    select.prøver    { background:#fff8c4; }
-td.act-cell.forestilling,   select.forestilling   { background:#c9f5cb; }
-td.act-cell.forestillingx2, select.forestillingx2 { background:#b4e6b8; }
-td.act-cell.forestillingx3, select.forestillingx3 { background:#9fdba5; }
-td.act-cell.spillefri, select.spillefri { background:#f8c5c5; }
-td.act-cell.annet,     select.annet     { background:#e3e3e3; }
+/* Aktivitet-farger */
+td.act-cell.rigg,            select.rigg            { background: #d8c7ff; }
+td.act-cell.prøver,          select.prøver          { background: #fff8c4; }
+td.act-cell.forestilling,    select.forestilling    { background: #c9f5cb; }
+td.act-cell.forestillingx2,  select.forestillingx2  { background: #b4e6b8; }
+td.act-cell.forestillingx3,  select.forestillingx3  { background: #9fdba5; }
+td.act-cell.spillefri,       select.spillefri       { background: #f8c5c5; }
+td.act-cell.annet,           select.annet           { background: #e3e3e3; }
 
+td.act-cell, select { transition: background .15s ease; }
 
-  /* fin liten overgang når farger endrer seg */
-  td.act-cell, select { transition: background .15s ease; }
+/* =======================
+   Lagre-knapp & Toast
+   ======================= */
+#saveBtn {
+  margin-top: 18px;
+  padding: 12px 20px;
+  background: #67123b;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  transition: background .2s ease;
+}
+#saveBtn:hover { background: #4c0d2b; }
+#saveBtn.saved { background: #2e7d32; }
 
+.toast {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  background: #2e7d32;
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.18);
+  opacity: 0;
+  transform: translateY(12px);
+  transition: all .25s ease;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
