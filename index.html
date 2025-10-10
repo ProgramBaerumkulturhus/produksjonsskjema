@@ -37,13 +37,15 @@
     <h2 id="title">Laster…</h2>
 
     <table id="data">
-      <tr>
-        <th>Dato</th>
-        <th>Inn-tid</th>
-        <th>Ut-tid</th>
-        <th>Aktivitet</th>
-      </tr>
-    </table>
+  <tr>
+    <th>Dato</th>
+    <th>Inn-tid</th>
+    <th>Ut-tid</th>
+    <th>Aktivitet</th>
+    <th>Kommentar</th> <!-- NEW -->
+  </tr>
+</table>
+
 
     <button id="saveBtn">💾 Lagre endringer</button>
     <span id="lastSaved"></span>
@@ -127,72 +129,68 @@ function applyActivityStyle(selectEl) {
 
     
     // ---------- LAST DATA ----------
-    async function loadData() {
-      if (!ark) {
-        titleEl.textContent = "Mangler ?ark= i URL";
-        return;
-      }
-      titleEl.textContent = ark;
-
-      try {
-        const res = await fetch(`${SCRIPT_URL}?ark=${encodeURIComponent(ark)}`, {
-          method: "GET",
-          mode: "cors",
-        });
-        if (!res.ok) throw new Error(`GET feilet: ${res.status}`);
-        const json = await res.json();
-
-      json.rows.forEach((r, i) => {
-  const raw = r.dato || "";
-  let d = new Date(raw);
-  let visDato;
-  let weekend = false;
-
-  if (isNaN(d.getTime())) {
-    visDato = raw; // f.eks. "Onsdag 01. oktober"
-    const lower = raw.toLowerCase();
-    weekend = lower.startsWith("lørdag") || lower.startsWith("søndag");
-  } else {
-    visDato = formatDatoLang(d);  // "Onsdag 01. oktober"
-    weekend = isWeekend(d);
+    
+  // Hjelp: gjør første bokstav stor (i tilfelle locale gir liten)
+  function capFirst(s) {
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
   }
 
-  // Bold ukedag:
-  const firstSpace = visDato.indexOf(" ");
-  const weekday = firstSpace > 0 ? visDato.slice(0, firstSpace) : visDato;
-  const rest    = firstSpace > 0 ? visDato.slice(firstSpace + 1) : "";
-
-  // Standard aktivitet = "Prøver" hvis feltet er tomt/streken
-  const currentAktivitet = (r.aktivitet && r.aktivitet.trim() && r.aktivitet.trim() !== "—")
-    ? r.aktivitet
-    : "Prøver";
-
-  const tr = document.createElement("tr");
-  if (weekend) tr.classList.add("weekend");
-
-  tr.innerHTML = `
-    <td class="date-td"><span class="weekday">${weekday}</span>${rest ? " " + rest : ""}</td>
-    <td><input type="text" id="inntid-${i}" value="${r.inntid || ""}"></td>
-    <td><input type="text" id="uttid-${i}" value="${r.uttid || ""}"></td>
-    <td class="act-cell">
-      <select id="aktivitet-${i}">
-        ${optionHtml(currentAktivitet)}
-      </select>
-    </td>
-  `;
-  tableEl.appendChild(tr);
-
-  const sel = tr.querySelector(`#aktivitet-${i}`);
-  applyActivityStyle(sel);
-  sel.addEventListener("change", () => applyActivityStyle(sel));
-});
-
-
-      } catch (err) {
-        console.error(err);
-        alert("Kunne ikke hente data fra arket. Sjekk API-lenken.");
-      }
+  async function loadData() {
+    if (!ark) {
+      titleEl.textContent = "Mangler ?ark= i URL";
+      return;
     }
+    titleEl.textContent = "Skjema – " + ark;
+
+    try {
+      const res = await fetch(`${SCRIPT_URL}?ark=${encodeURIComponent(ark)}`, {
+        method: "GET",
+        mode: "cors",
+      });
+      if (!res.ok) throw new Error(`GET feilet: ${res.status}`);
+      const json = await res.json();
+
+      json.rows.forEach((r, i) => {
+        // r.dato kan komme som streng – lag Date
+        const d = new Date(r.dato);
+
+        // Fullt ukedagsnavn + resten av datoen
+        const weekday = capFirst(d.toLocaleDateString("no-NO", { weekday: "long" }));
+        const rest    = d.toLocaleDateString("no-NO", { day: "2-digit", month: "long" });
+
+        // Marker helg
+        const weekend = d.getDay() === 0 || d.getDay() === 6;
+
+        // Standard aktivitet = "Prøver" hvis tomt/streken
+        const currentAktivitet =
+          (r.aktivitet && r.aktivitet.trim() && r.aktivitet.trim() !== "—")
+            ? r.aktivitet
+            : "Prøver";
+
+        // Bygg rad
+        const tr = document.createElement("tr");
+        if (weekend) tr.classList.add("weekend");
+
+        tr.innerHTML = `
+          <td class="date-td">
+            <span class="weekday">${weekday}</span>${rest ? " " + rest : ""}
+          </td>
+          <td><input type="text" id="inntid-${i}" value="${r.inntid || ""}"></td>
+          <td><input type="text" id="uttid-${i}" value="${r.uttid || ""}"></td>
+          <td class="act-cell">
+            <select id="aktivitet-${i}">
+              ${optionHtml(currentAktivitet)}
+            </select>
+          </td>
+        `;
+
+        tableEl.appendChild(tr);
+      });
+    } catch (err) {
+      console.error(err);
+      alert("Kunne ikke hente data fra arket. Sjekk API-lenken.");
+    }
+  }
 
     // ---------- LAGRE ----------
     async function saveData() {
@@ -202,13 +200,14 @@ function applyActivityStyle(selectEl) {
   const rows = [];
   document.querySelectorAll("input[id^='inntid-']").forEach(inp => {
     const i = inp.id.split("-")[1];
-    rows.push({
-      row: parseInt(i, 10) + 2,
-      inntid: document.getElementById(`inntid-${i}`).value,
-      uttid: document.getElementById(`uttid-${i}`).value,
-      aktivitet: document.getElementById(`aktivitet-${i}`).value
-    });
-  });
+rows.push({
+  row: parseInt(i, 10) + 2,
+  inntid: document.getElementById(`inntid-${i}`).value,
+  uttid: document.getElementById(`uttid-${i}`).value,
+  aktivitet: document.getElementById(`aktivitet-${i}`).value,
+  kommentar: document.getElementById(`kommentar-${i}`).value
+});
+
 
   try {
     // Viktig: text/plain og no-cors => ingen preflight, og vi bryr oss ikke om svar-innhold
@@ -235,6 +234,19 @@ function applyActivityStyle(selectEl) {
     }, 2000);
   }
 }
+
+<div id="confirmBlock" style="display:none; margin-top:18px;">
+  <label style="display:flex; gap:8px; align-items:center;">
+    <input type="checkbox" id="confirmChk">
+    <span>Jeg bekrefter at jeg har fylt ut og trykket «Lagre endringer»</span>
+  </label>
+
+  <button id="submitBtn" disabled style="margin-top:10px; padding:10px 18px; background:#2e7d32; color:#fff; border:none; border-radius:8px; cursor:not-allowed;">
+    Send inn skjema
+  </button>
+</div>
+
+                                                            
 
     // ---------- LIM INN FLERE CELLER ----------
    document.querySelector("#data").addEventListener("paste", function (e) {
@@ -278,6 +290,9 @@ function applyActivityStyle(selectEl) {
     });
   });
 });
+
+      /* Safe, scoped spacing for intro text */
+.intro p { margin: 10px 0 14px; }
 
 
     // ---------- INIT ----------
